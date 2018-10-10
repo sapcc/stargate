@@ -1,0 +1,61 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: {{ include "stargate.fullname" . }}
+  labels:
+    app: {{ include "stargate.name" . }}
+    chart: {{ include "stargate.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "stargate.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "stargate.name" . }}
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+        - name: {{ include "stargate.name" . }}-api
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - stargate
+            - --port={{ default 8080 .Values.port }}
+            - --alertmanager-url={{ required "missing alertmanager url" .Values.alertmanagerURL }}
+            {{- if .Values.externalURL }}
+            - --external-url={{ .Values.externalURL }}
+            {{- end }}
+            {{- if .Values.configFile }}
+            - --config-file={{ .Values.configFile }}
+            {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ default 8080 .Values.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+    {{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+{{ toYaml . | indent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+{{ toYaml . | indent 8 }}
+    {{- end }}

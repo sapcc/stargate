@@ -1,0 +1,65 @@
+{
+  "payload": {
+    "type": "interactive_message",
+    "actions": [{
+      "name": "reaction",
+      "type": "button",
+      "value": "acknowledge"
+    }],
+    "callback_id": "alert_reaction",
+    "team": {
+      "id": "T07CKTNKX",
+      "domain": "convergedcloud",
+      "enterprise_id": "E7RBBBXHB",
+      "enterprise_name": "SAP"
+    },
+    "channel": {
+      "id": "C6LUQKM5K",
+      "name": "dev-null"
+    },
+    "user": {
+      "id": "W4YS1BX1V",
+      "name": "d064935",
+      "team_id": "T07CKTNKX"
+    },
+    "action_ts": "1537372906.500339",
+    "message_ts": "1537372903.000100",
+    "attachment_id": "1",
+    "token": "TLt7WQq3bXrvJ1b0LQonm1jf",
+    "is_app_unfurl": false,
+    "original_message": {
+      "text": "Alert....",
+      "bot_id": "BCWJG0RH9",
+      "attachments": [{
+        "callback_id": "alert_reaction",
+        "fallback": "You are not authorized",
+        "text": "Would you like to react",
+        "id": 1,
+        "color": "3AA3E3",
+        "actions": [
+          {
+          "id": "1",
+          "name": "reaction",
+          "text": "Acknowledge",
+          "type": "button",
+          "value": "acknowledge",
+          "style": ""
+          },
+          {
+            "id": "2",
+            "name": "reaction",
+            "text": "Silence for",
+            "type": "button",
+            "value": "silence",
+            "style": ""
+          }
+        ]
+      }],
+      "type": "message",
+      "subtype": "bot_message",
+      "ts": "1537372903.000100"
+    },
+    "response_url": "https://localhost",
+    "trigger_id": "438663178756.7427940677.90c1c00fb6bae1b77ff7175bdec22a54"
+  }
+}
