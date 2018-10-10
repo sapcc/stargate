@@ -1,0 +1,5 @@
+dependencies:
+  - name: nginx-ingress
+    alias: nginx-ingress-internet
+    repository: https://kubernetes-charts.storage.googleapis.com/
+    version: 0.28.2

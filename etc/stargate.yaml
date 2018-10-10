@@ -1,0 +1,7 @@
+slack:
+  signing_secret: "secretSigningSecret"
+  verification_token: ""
+  access_token: "secretAccessToken"
+  authorized_groups:
+    - admin
+    - hase

@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: {{ include "stargate.fullname" . }}
+  labels:
+    app: {{ include "stargate.name" . }}
+    chart: {{ include "stargate.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+
+spec:
+  ports:
+    - port: {{ .Values.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: {{ include "stargate.name" . }}
+    release: {{ .Release.Name }}
