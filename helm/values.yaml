@@ -8,6 +8,9 @@ image:
 # the port used to expose the stargate API
 port: 8080
 
+# whether debug is enabled
+debugEnabled: false
+
 # Slack configuration
 slack: {}
   # Slack signs the requests we send you using this secret
