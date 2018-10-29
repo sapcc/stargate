@@ -35,37 +35,26 @@ type API struct {
 	Config config.Config
 }
 
-// Route represents a route and the handler
-type Route struct {
-	Method      string
-	Path        string
-	HandlerFunc func(http.ResponseWriter, *http.Request)
-}
+// NewAPI creates a new API based on the configuration
+func NewAPI(config config.Config) *API {
 
-// NewV1API creates a new API based on the configuration
-func NewV1API(config config.Config) *API {
-	r := &API{
-		mux.NewRouter(),
-		config,
-	}
+	router := mux.NewRouter().StrictSlash(false)
 
-	r.Methods(http.MethodGet).Path("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	router.Methods(http.MethodGet).Path("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(NewAPIInfo(config.ExternalURL)); err != nil {
 			json.NewEncoder(w).Encode(Error{Code: 500, Message: err.Error()})
 		}
 	})
 
-	// accepts POST requests from slack
-	//r.Methods(http.MethodPost).Path("/v1/slack").HandlerFunc(sg.slack.HandleMessage)
-
-	return r
+	return &API{
+		router,
+		config,
+	}
 }
 
-// AddRoutes adds new routes to the stargate API
-func (a *API) AddRoutes(routes []Route) {
-	for _, route := range routes {
-		a.Methods(route.Method).Path(route.Path).HandlerFunc(route.HandlerFunc)
-	}
+// AddRouteV1 adds a new route to the v1 API
+func (a *API) AddRouteV1(method, path string, handleFunc func(w http.ResponseWriter, r *http.Request)) {
+	a.PathPrefix("/v1").Methods(method).Path(path).HandlerFunc(handleFunc)
 }
 
 // Serve starts the stargate API

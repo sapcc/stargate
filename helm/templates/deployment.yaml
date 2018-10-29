@@ -1,5 +1,6 @@
 apiVersion: apps/v1beta2
 kind: Deployment
+
 metadata:
   name: {{ include "stargate.fullname" . }}
   labels:
@@ -7,6 +8,7 @@ metadata:
     chart: {{ include "stargate.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -26,17 +28,19 @@ spec:
           args:
             - stargate
             - --port={{ default 8080 .Values.port }}
-            - --alertmanager-url={{ required "missing alertmanager url" .Values.alertmanagerURL }}
+            - --alertmanager-url={{ required "missing alertmanager url" .Values.alertmanager.url }}
+            - --config-file=/etc/stargate/config/{{ include "stargate.fullname" . }}.yaml
             {{- if .Values.externalURL }}
             - --external-url={{ .Values.externalURL }}
-            {{- end }}
-            {{- if .Values.configFile }}
-            - --config-file={{ .Values.configFile }}
             {{- end }}
           ports:
             - name: http
               containerPort: {{ default 8080 .Values.port }}
               protocol: TCP
+          volumeMounts:
+            - name: config
+              mountPath: /etc/stargate/config
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /
@@ -47,15 +51,7 @@ spec:
               port: http
           resources:
 {{ toYaml .Values.resources | indent 12 }}
-    {{- with .Values.nodeSelector }}
-      nodeSelector:
-{{ toYaml . | indent 8 }}
-    {{- end }}
-    {{- with .Values.affinity }}
-      affinity:
-{{ toYaml . | indent 8 }}
-    {{- end }}
-    {{- with .Values.tolerations }}
-      tolerations:
-{{ toYaml . | indent 8 }}
-    {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "stargate.fullname" . }}

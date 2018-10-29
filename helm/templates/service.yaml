@@ -1,5 +1,6 @@
 apiVersion: v1
 kind: Service
+
 metadata:
   name: {{ include "stargate.fullname" . }}
   labels:
@@ -7,6 +8,7 @@ metadata:
     chart: {{ include "stargate.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+
 spec:
   ports:
     - port: {{ .Values.port }}

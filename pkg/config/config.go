@@ -23,32 +23,47 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"gopkg.in/yaml.v1"
 	"github.com/apex/log"
+	"gopkg.in/yaml.v2"
 )
 
 // Config ...
 type Config struct {
-	AlertManager alertmanagerConfig
+	AlertManager alertmanagerConfig `yaml:"alertmanager"`
+	SlackConfig  slackConfig        `yaml:"slack"`
 
-	ListenPort  uint   `yaml:",inline"`
-	ExternalURL string `yaml:",inline"`
+	ListenPort  int
+	ExternalURL string
 
-	ConfigFilePath string `yaml:",inline"`
+	ConfigFilePath string
+	SecretFilePath string
 }
 
 type alertmanagerConfig struct {
-	URL string `yaml:"alertmanager_url"`
+	URL string `yaml:"url"`
+}
+
+type slackConfig struct {
+	AuthorizedGroups []string `yaml:"authorized_groups"`
+
+	// the AccessToken to authenticate the stargate to messenger
+	AccessToken string `yaml:"access_token"`
+
+	// signing token to verify messenger messenger
+	SigningSecret string `yaml:"signing_secret"`
+
+	// verification token to verify messenger messenger
+	VerificationToken string `yaml:"verification_token"`
 }
 
 // NewConfig reads the configuration from the given filePath
-func NewConfig(filePath string) (cfg Config, err error) {
-	if filePath == "" {
+func NewConfig(opts Options) (cfg Config, err error) {
+	if opts.ConfigFilePath == "" {
 		log.Info("path to configuration file not provided")
 		return cfg, nil
 	}
 
-	cfgBytes, err := ioutil.ReadFile(filePath)
+	cfgBytes, err := ioutil.ReadFile(opts.ConfigFilePath)
 	if err != nil {
 		return cfg, fmt.Errorf("read configuration file: %s", err.Error())
 	}
@@ -57,5 +72,35 @@ func NewConfig(filePath string) (cfg Config, err error) {
 		return cfg, fmt.Errorf("parse configuration: %s", err.Error())
 	}
 
+	if opts.ExternalURL != "" {
+		cfg.ExternalURL = opts.ExternalURL
+	}
+	if opts.ListenPort != 0 {
+		cfg.ListenPort = opts.ListenPort
+	}
+	if opts.AlertmanagerURL != "" {
+		cfg.AlertManager.URL = opts.AlertmanagerURL
+	}
+
+	cfg.SlackConfig.validate()
+
 	return cfg, nil
+}
+
+func (s slackConfig) validate() {
+	if s.SigningSecret == "" && s.VerificationToken == "" {
+		log.Fatal("incomplete messenger configuration: either messenger `signing_secret` or `verification_token` needs to be provided so messenger messenger can be verified")
+	}
+
+	if s.AccessToken == "" {
+		log.Fatal("incomplete messenger configuration: missing messenger `access_token`")
+	}
+}
+
+// GetValidationToken returns either the signingSecret or verificationToken in order to validate slack messenger
+func (s *slackConfig) GetValidationToken() string {
+	if s.SigningSecret != "" {
+		return s.SigningSecret
+	}
+	return s.VerificationToken
 }

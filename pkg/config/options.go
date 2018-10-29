@@ -17,31 +17,14 @@
 *
 *******************************************************************************/
 
-package api
+package config
 
-import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-)
+// Options passed via cmd line
+type Options struct {
+  AlertmanagerURL string
 
-// Error wraps an error in a json format
-type Error struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
+  ListenPort  int
+  ExternalURL string
 
-// Error returns the string representation of an Error
-func (err *Error) Error() string {
-	return fmt.Sprintf("[%d] %s", err.Code, err.Message)
-}
-
-// HandleError ...
-func HandleError(code int, message string, w http.ResponseWriter) {
-	json.NewEncoder(w).Encode(
-		Error{
-			Code:    code,
-			Message: message,
-		},
-	)
+  ConfigFilePath string
 }

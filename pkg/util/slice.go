@@ -17,31 +17,14 @@
 *
 *******************************************************************************/
 
-package api
+package util
 
-import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-)
-
-// Error wraps an error in a json format
-type Error struct {
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
-// Error returns the string representation of an Error
-func (err *Error) Error() string {
-	return fmt.Sprintf("[%d] %s", err.Code, err.Message)
-}
-
-// HandleError ...
-func HandleError(code int, message string, w http.ResponseWriter) {
-	json.NewEncoder(w).Encode(
-		Error{
-			Code:    code,
-			Message: message,
-		},
-	)
+// StringSliceContains checks whether a string slice contains a string
+func StringSliceContains(stringSlice []string, searchString string) bool {
+  for _, s := range stringSlice {
+    if s == searchString {
+      return true
+    }
+  }
+  return false
 }

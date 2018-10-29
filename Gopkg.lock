@@ -2,23 +2,12 @@
 
 
 [[projects]]
-  branch = "master"
-  digest = "1:315c5f2f60c76d89b871c73f9bd5fe689cad96597afd50fb9992228ef80bdd34"
-  name = "github.com/alecthomas/template"
-  packages = [
-    ".",
-    "parse",
-  ]
-  pruneopts = "UT"
-  revision = "a0175ee3bccc567396460bf5acd36800cb10c49c"
-
-[[projects]]
-  branch = "master"
-  digest = "1:c198fdc381e898e8fb62b8eb62758195091c313ad18e52a3067366e1dda2fb3c"
-  name = "github.com/alecthomas/units"
+  digest = "1:740f0e477ddda011071f5e076ac9d38a0f6cee3ad3a924ab2acdd45b74a3c05c"
+  name = "github.com/apex/log"
   packages = ["."]
   pruneopts = "UT"
-  revision = "2efee857e7cfd4f3d0138cc3cbb1b4966962b93a"
+  revision = "941dea75d3ebfbdd905a5d8b7b232965c5e5c684"
+  version = "v1.1.0"
 
 [[projects]]
   branch = "master"
@@ -109,14 +98,16 @@
   version = "v0.15.2"
 
 [[projects]]
-  digest = "1:f15af14bc03a2040b9b04a50bae85b9d3c9b504b61503963018e1c7646e8ae6e"
+  digest = "1:c5d7f40fd396a85d9575d6f5efce069a12f7eccb5886ad1eaf0a82052ba85338"
   name = "github.com/prometheus/client_golang"
   packages = [
     "api",
     "prometheus",
+    "prometheus/internal",
   ]
   pruneopts = "UT"
-  revision = "c3324c1198cf3374996e9d3098edd46a6b55afc9"
+  revision = "1cafe34db7fdec6022e17e00e1c1ea501022f3e4"
+  version = "v0.9.0"
 
 [[projects]]
   branch = "master"
@@ -128,7 +119,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:d9658a22d0b7a92561f7caaa44c7407134b6b467513ab5ff402b14be038f2f69"
+  digest = "1:b799e9ea3170ff5e789dd1eabf918bfa0c2b128f45018cd755eb1dc3389ab988"
   name = "github.com/prometheus/common"
   packages = [
     "config",
@@ -137,7 +128,7 @@
     "model",
   ]
   pruneopts = "UT"
-  revision = "c7de2306084e37d54b8be01f3541a8464345e9a5"
+  revision = "7e9e6cabbd393fc208072eedef99188d0ce788b6"
 
 [[projects]]
   branch = "master"
@@ -153,6 +144,14 @@
   revision = "185b4288413d2a0dd0806f78c90dde719829e5ae"
 
 [[projects]]
+  digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
+  name = "github.com/spf13/pflag"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "298182f68c66c05229eb03ac171abe6e309ee79a"
+  version = "v1.0.3"
+
+[[projects]]
   branch = "master"
   digest = "1:a7b3aa11890fbe342ed4bf76a27986473d13103ae14796dcf2b55521c93e2547"
   name = "golang.org/x/net"
@@ -162,23 +161,7 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "146acd28ed5894421fb5aac80ca93bc1b1f46f87"
-
-[[projects]]
-  digest = "1:c06d9e11d955af78ac3bbb26bd02e01d2f61f689e1a3bce2ef6fb683ef8a7f2d"
-  name = "gopkg.in/alecthomas/kingpin.v2"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "947dcec5ba9c011838740e680966fd7087a71d0d"
-  version = "v2.2.6"
-
-[[projects]]
-  branch = "v1"
-  digest = "1:4384086c0f7f9e662c2ae8e900af35dc75ff262205b362597bb65af2fd8a21c9"
-  name = "gopkg.in/yaml.v1"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "9f9df34309c04878acc86042b16630b0f696e1de"
+  revision = "9b4f9f5ad5197c79fd623a3638e70d8b26cef344"
 
 [[projects]]
   digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
@@ -192,15 +175,17 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/apex/log",
     "github.com/gorilla/mux",
+    "github.com/nlopes/slack",
     "github.com/nlopes/slack/slackevents",
     "github.com/pkg/errors",
     "github.com/prometheus/alertmanager/client",
     "github.com/prometheus/alertmanager/types",
     "github.com/prometheus/client_golang/api",
     "github.com/prometheus/common/model",
-    "gopkg.in/alecthomas/kingpin.v2",
-    "gopkg.in/yaml.v1",
+    "github.com/spf13/pflag",
+    "gopkg.in/yaml.v2",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1

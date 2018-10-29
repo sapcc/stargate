@@ -1,3 +1,22 @@
+/*******************************************************************************
+*
+* Copyright 2018 SAP SE
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You should have received a copy of the License along with this
+* program. If not, you may obtain a copy of the License at
+*
+*     http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*
+*******************************************************************************/
+
 package main
 
 import (
@@ -13,13 +32,13 @@ import (
 	"sync"
 )
 
-var cfg config.Config
+var opts config.Options
 
 func init() {
-	pflag.StringVar(&cfg.AlertManager.URL, "alertmanager-url", "", "URL of the Prometheus Alertmanager")
-	pflag.UintVar(&cfg.ListenPort, "port", 8080, "API port")
-	pflag.StringVar(&cfg.ExternalURL, "external-url", "", "External URL")
-	pflag.StringVar(&cfg.ConfigFilePath, "config-file", "", "Path to config file")
+	pflag.StringVar(&opts.AlertmanagerURL, "alertmanager-url", "", "URL of the Prometheus Alertmanager")
+	pflag.StringVar(&opts.ExternalURL, "external-url", "", "External URL")
+	pflag.IntVar(&opts.ListenPort, "port", 8080, "API port")
+	pflag.StringVar(&opts.ConfigFilePath, "config-file", "/etc/stargate/config/stargate.yaml", "Path to the file containing the config")
 }
 
 func main() {
@@ -34,7 +53,7 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 
-	go stargate.NewStargate(cfg).Run()
+	go stargate.NewStargate(opts).Run()
 
 	<-sigs // Wait for signals (this hangs until a signal arrives)
 	log.Println("Shutting down...")
