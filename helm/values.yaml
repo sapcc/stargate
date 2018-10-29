@@ -46,7 +46,7 @@ ingress:
 
 # values for stable/nginx-ingress chart
 nginx-ingress-internet:
-  enabled: true
+  enabled: false
 
   revisionHistoryLimit: 5
   rbac:
