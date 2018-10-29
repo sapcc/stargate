@@ -278,6 +278,11 @@ func parseAlertFromSlackMessageText(text string) (map[string]string, error) {
 			m := match[i]
 			if name == "severity" || name == "region" {
 				m = strings.ToLower(m)
+				// 'warning - 2' -> warning
+				if strings.Contains(m, "-") {
+					s := strings.Split(m, "-")
+					m = strings.TrimSpace(s[0])
+				}
 			}
 			matchMap[name] = m
 		}
