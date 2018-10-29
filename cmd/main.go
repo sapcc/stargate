@@ -39,6 +39,7 @@ func init() {
 	pflag.StringVar(&opts.ExternalURL, "external-url", "", "External URL")
 	pflag.IntVar(&opts.ListenPort, "port", 8080, "API port")
 	pflag.StringVar(&opts.ConfigFilePath, "config-file", "/etc/stargate/config/stargate.yaml", "Path to the file containing the config")
+	pflag.BoolVar(&opts.IsDebug, "debug", false, "Enable debug configuration and log level")
 }
 
 func main() {

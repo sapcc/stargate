@@ -27,4 +27,6 @@ type Options struct {
   ExternalURL string
 
   ConfigFilePath string
+
+  IsDebug bool
 }

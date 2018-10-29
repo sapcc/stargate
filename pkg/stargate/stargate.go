@@ -48,7 +48,7 @@ func NewStargate(opts config.Options) *Stargate {
 
 	sg := &Stargate{
 		Config: cfg,
-		slack:  messenger.NewSlackClient(cfg),
+		slack:  messenger.NewSlackClient(cfg, opts.IsDebug),
 	}
 
 	v1API := api.NewAPI(cfg)

@@ -1,0 +1,69 @@
+{
+  "payload": {
+    "type": "interactive_message",
+    "actions": [{
+      "name": "reaction",
+      "type": "button",
+      "value": "silence8h"
+    }],
+    "callback_id": "alertmanager",
+    "team": {
+      "id": "slackTeamID",
+      "domain": "slackDomain",
+      "enterprise_id": "slackEnterpriseID",
+      "enterprise_name": "slackEnterpriseName"
+    },
+    "channel": {
+      "id": "channelID",
+      "name": "dev-null"
+    },
+    "user": {
+      "id": "slackUserID",
+      "name": "slackUserName",
+      "team_id": "slackUserTeamID"
+    },
+    "action_ts": "1540831364.649714",
+    "message_ts": "1540828978.007400",
+    "attachment_id": "1",
+    "token": "slackToken",
+    "is_app_unfurl": false,
+    "original_message": {
+      "text": "",
+      "bot_id": "slackBotID",
+      "attachments": [{
+        "callback_id": "alertmanager",
+        "fallback": "[FIRING:1] OpenstackManilaDatapathDown staging (nfs manila ccloud-health-datapath-details 1.2.3.4:9102 endpoints blackbox-tests-datapath blackbox Datapath manila nfs is down for 15 minutes. See Sentry for details docs/devops/alert/manila/#nfs blackbox/?query=test_nfs manila critical openstack) | <https://alertmanager.tld/#/alerts?receiver=slack_general>",
+        "text": "n*[CRITICAL]* *[STAGING]* *<https://alertmanager.tld/#/alerts?receiver=slack_general|OpenstackManilaDatapathDown>* - Datapath manila nfs is downnn:fire: Datapath manila nfs is down for 15 minutes. See Sentry for details (<https://prometheus.tld/graph?g0.expr=blackbox_datapath_status_gauge%7Bservice%3D~%22manila%22%7D+%3D%3D+1&amp;g0.tab=1|Graph>)n*<https://grafana.tld/dashboard/db/ccloud-health-datapath-details|Grafana>* *<https://sentry.tld/monsoon/blackbox/?query=test_nfs|Sentry>* *<https://operations.tld/docs/devops/alert/manila/#nfs|Playbook>* ",
+        "id": 1,
+        "color": "a30200",
+        "actions": [{
+          "id": "1",
+          "name": "reaction",
+          "text": "Silence for 8h",
+          "type": "button",
+          "value": "silence8h",
+          "style": ""
+        }, {
+          "id": "2",
+          "name": "reaction",
+          "text": "Open CIMC ticket",
+          "type": "button",
+          "value": "cimcTicket",
+          "style": "",
+          "confirm": {
+            "text": "Would you like to open a ticket and silence the alert?",
+            "title": "Are you sure?",
+            "ok_text": "Yes",
+            "dismiss_text": "No"
+          }
+        }],
+        "mrkdwn_in": ["fallback", "pretext", "text"]
+      }],
+      "type": "message",
+      "subtype": "bot_message",
+      "ts": "1540828978.007400"
+    },
+    "response_url": "slackResponseURL",
+    "trigger_id": "slackTriggerID"
+  }
+}
