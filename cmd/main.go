@@ -24,12 +24,13 @@ import (
 	"log"
 	"os"
 
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/stargate"
 	"github.com/spf13/pflag"
-	"os/signal"
-	"syscall"
-	"sync"
 )
 
 var opts config.Options

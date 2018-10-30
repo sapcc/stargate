@@ -21,35 +21,35 @@ package api
 
 // Info ...
 type Info struct {
-  Versions []version `json:"versions"`
+	Versions []version `json:"versions"`
 }
 
 type version struct {
-  Status string `json:"status"`
-  ID     string `json:"id"`
-  Links  []link `json:"links"`
+	Status string `json:"status"`
+	ID     string `json:"id"`
+	Links  []link `json:"links"`
 }
 
 type link struct {
-  Href string `json:"href"`
-  Rel  string `json:"rel"`
-  Type string `json:"type,omitempty"`
+	Href string `json:"href"`
+	Rel  string `json:"rel"`
+	Type string `json:"type,omitempty"`
 }
 
 // NewAPIInfo ...
 func NewAPIInfo(url string) *Info {
-  return &Info{
-    Versions: []version{
-      {
-        ID: "v1",
-        Status: "current",
-        Links: []link{
-          {
-            Rel: "self",
-            Href: url,
-          },
-        },
-      },
-    },
-  }
+	return &Info{
+		Versions: []version{
+			{
+				ID:     "v1",
+				Status: "current",
+				Links: []link{
+					{
+						Rel:  "self",
+						Href: url,
+					},
+				},
+			},
+		},
+	}
 }

@@ -24,19 +24,21 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+
 	"github.com/nlopes/slack"
 	"github.com/nlopes/slack/slackevents"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 
+	"fmt"
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/api"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/util"
-	"time"
-	"regexp"
-	"strings"
-	"fmt"
 )
 
 const (
@@ -83,7 +85,7 @@ func NewSlackClient(config config.Config, isDebug bool) Receiver {
 	s := slack.New(config.SlackConfig.AccessToken)
 	s.SetDebug(isDebug)
 
-	slackClient :=  &slackClient{
+	slackClient := &slackClient{
 		config:             config,
 		alertmanagerClient: alertmanager.New(config),
 		slackClient:        s,
@@ -288,7 +290,7 @@ func parseAlertFromSlackMessageText(text string) (map[string]string, error) {
 		}
 	}
 
-	if matchMap == nil || len(matchMap) == 0{
+	if matchMap == nil || len(matchMap) == 0 {
 		return nil, fmt.Errorf("no alert found in slack message: %s", text)
 	}
 

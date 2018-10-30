@@ -25,8 +25,8 @@ import (
 
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/api"
+	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/messenger"
-  "github.com/sapcc/stargate/pkg/config"
 )
 
 // Stargate ...

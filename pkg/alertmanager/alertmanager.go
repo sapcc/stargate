@@ -86,14 +86,13 @@ func matchersFromAlert(alert *model.Alert) types.Matchers {
 	matchers := make([]*types.Matcher, 0)
 	for labelKey, labelValue := range alert.Labels {
 		m := &types.Matcher{
-			Name: string(labelKey),
+			Name:  string(labelKey),
 			Value: string(labelValue),
 		}
 		m.IsRegex = true
 
-		matchers = append(matchers,m)
+		matchers = append(matchers, m)
 	}
 
 	return matchers
 }
-
