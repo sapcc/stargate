@@ -4,10 +4,6 @@ language: go
 go:
   - 1.11.x
 
-
-# only build with dependencies in /vendor
-install: true
-
 # no emails
 notifications:
   email: false
