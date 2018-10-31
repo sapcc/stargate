@@ -175,7 +175,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/apex/log",
     "github.com/gorilla/mux",
     "github.com/nlopes/slack",
     "github.com/nlopes/slack/slackevents",

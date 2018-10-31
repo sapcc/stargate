@@ -22,8 +22,8 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 
-	"github.com/apex/log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -59,7 +59,7 @@ type slackConfig struct {
 // NewConfig reads the configuration from the given filePath
 func NewConfig(opts Options) (cfg Config, err error) {
 	if opts.ConfigFilePath == "" {
-		log.Info("path to configuration file not provided")
+		log.Println("path to configuration file not provided")
 		return cfg, nil
 	}
 
