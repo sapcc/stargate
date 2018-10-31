@@ -1,5 +1,6 @@
 # Stargate
 
+[![Build Status](https://travis-ci.org/sapcc/stargate.svg?branch=master)](https://travis-ci.org/sapcc/stargate)
 [![Docker Repository](https://img.shields.io/docker/pulls/sapcc/stargate.svg?maxAge=604800)](https://hub.docker.com/r/sapcc/stargate/)
 
 The Stargate opens a gate from [Slack](https://slack.com) to the several systems to enable interaction with these.
