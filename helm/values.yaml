@@ -36,6 +36,10 @@ alertmanager:
 # the stargate's URL
 # externalURL: DEFINED-IN-SECRETS
 
+# optional SANs used for the certificate
+# sans:
+  # - SAN
+
 ingress:
   enabled: true
   annotations:

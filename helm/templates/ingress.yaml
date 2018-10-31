@@ -19,6 +19,9 @@ spec:
   tls:
     - hosts:
       - {{ required "missing externalURL" .Values.externalURL }}
+      {{- if .Values.sans }}
+      {{ toYaml .Values.sans . }}
+      {{- end }}
       secretName: tls-{{ required "missing externalURL" .Values.externalURL | replace "." "-" }}
   rules:
     - host: {{ required "missing externalURL" .Values.externalURL }}
