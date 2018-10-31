@@ -114,12 +114,11 @@ func (s *slackClient) HandleMessage(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
-		code := 500
 		if isErrorInvalidToken(err) {
 			api.RespondWithUnauthorized(w)
 			return
 		}
-		api.RespondWithError(code, err.Error(), w)
+		api.RespondWithNoContent(w)
 		log.Printf("failed to read request body: %v", err)
 		return
 	}
@@ -128,7 +127,6 @@ func (s *slackClient) HandleMessage(w http.ResponseWriter, r *http.Request) {
 		var c *slackevents.ChallengeResponse
 		err := json.Unmarshal([]byte(buf.String()), &c)
 		if err != nil {
-			api.RespondWithError(500, err.Error(), w)
 			log.Printf("failed to unmarshal request body: %v", err)
 		}
 		w.Header().Set("Content-Type", "text")
@@ -136,13 +134,13 @@ func (s *slackClient) HandleMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !s.isUserAuthorized(slackMessageAction.User.Id) {
-		api.RespondWithOK(w)
+		api.RespondWithNoContent(w)
 		log.Printf("user with ID '%s' is not authorized to respond to a message", slackMessageAction.User.Id)
 		return
 	}
 
 	if err := s.checkAction(slackMessageAction); err != nil {
-		api.RespondWithError(500, err.Error(), w)
+		api.RespondWithNoContent(w)
 		log.Printf("failed to respond to slack message: %v", err)
 	}
 }

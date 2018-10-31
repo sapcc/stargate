@@ -29,6 +29,11 @@ func RespondWithOK(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 }
 
+// RespondWithNoContent responds with 204
+func RespondWithNoContent(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // RespondWithUnauthorized responds with an appropriate json error
 func RespondWithUnauthorized(w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(
