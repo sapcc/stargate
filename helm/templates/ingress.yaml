@@ -20,7 +20,7 @@ spec:
     - hosts:
       - {{ required "missing externalURL" .Values.externalURL }}
       {{- if .Values.sans }}
-      {{ toYaml .Values.sans . }}
+{{ toYaml .Values.sans | indent 6 }}
       {{- end }}
       secretName: tls-{{ required "missing externalURL" .Values.externalURL | replace "." "-" }}
   rules:
@@ -31,4 +31,13 @@ spec:
             backend:
               serviceName: {{ $fullName }}
               servicePort: http
+    {{- range $_, $host := .Values.sans }}
+    - host: {{ $host }}
+      http:
+        paths:
+          - path: /
+            backend:
+              serviceName: {{ $fullName }}
+              servicePort: http
+    {{- end }}
 {{- end }}
