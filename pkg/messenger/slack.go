@@ -80,7 +80,8 @@ type slackClient struct {
 
 // NewSlackClient returns a new receiver
 func NewSlackClient(config config.Config, isDebug bool) Receiver {
-	s := slack.New(config.SlackConfig.AccessToken, slack.OptionDebug(isDebug))
+	s := slack.New(config.SlackConfig.AccessToken)
+	s.SetDebug(isDebug)
 
 	slackClient := &slackClient{
 		config:             config,
@@ -134,9 +135,9 @@ func (s *slackClient) HandleMessage(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(c.Challenge))
 	}
 
-	if !s.isUserAuthorized(slackMessageAction.User.ID) {
+	if !s.isUserAuthorized(slackMessageAction.User.Id) {
 		api.RespondWithOK(w)
-		log.Printf("user with ID '%s' is not authorized to respond to a message", slackMessageAction.User.ID)
+		log.Printf("user with ID '%s' is not authorized to respond to a message", slackMessageAction.User.Id)
 		return
 	}
 
@@ -162,7 +163,7 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 				return errors.Wrapf(err, "failed to construct alert from slack message")
 			}
 
-			userName, err := s.slackUserIDToName(messageAction.User.ID)
+			userName, err := s.slackUserIDToName(messageAction.User.Id)
 			if err != nil {
 				log.Printf("error finding slack user by id: %v", err)
 				userName = SilenceDefaultAuthor
@@ -298,20 +299,13 @@ func parseAlertFromSlackMessageText(text string) (map[string]string, error) {
 }
 
 func (s *slackClient) postToChannel(channel, message string) {
-	channelID, timestamp, err := s.slackClient.PostMessage(
+	s.slackClient.PostMessage(
 		channel,
-		slack.MsgOptionText(message, false),
-		slack.MsgOptionPostMessageParameters(
-			slack.PostMessageParameters{
-				Username: PostAsUserName,
-			},
-		),
+		message,
+		slack.PostMessageParameters{
+			Username: PostAsUserName,
+		},
 	)
-
-	if err != nil {
-		log.Printf("failed to post message to channel %s: %v", channel, err)
-	}
-	log.Printf("posted message to channel %s, timestamp %s", channelID, timestamp)
 }
 
 func (s *slackClient) addReactionToMessage(message slack.Message, reaction string) {
@@ -319,5 +313,4 @@ func (s *slackClient) addReactionToMessage(message slack.Message, reaction strin
 	if err := s.slackClient.AddReaction(reaction, msgRef); err != nil {
 		log.Printf("error adding reaction to message: %v", err)
 	}
-	log.Printf("added reaction to message")
 }
