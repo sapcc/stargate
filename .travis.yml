@@ -9,6 +9,7 @@ notifications:
   email: false
 
 before_script:
+  - dep ensure
   - go get -u golang.org/x/lint/golint
 
 script:
