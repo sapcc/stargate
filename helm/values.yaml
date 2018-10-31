@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: sapcc/stargate
-  tag: v201810312316
+  tag: v201811010022
   pullPolicy: IfNotPresent
 
 # the port used to expose the stargate API
