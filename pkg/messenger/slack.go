@@ -144,7 +144,6 @@ func (s *slackClient) HandleMessage(w http.ResponseWriter, r *http.Request) {
 
 func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error {
 	for _, action := range messageAction.Actions {
-		log.Printf("found action %s in message", action.Value)
 		// only react to buttons clicks
 		if action.Name != ActionName || action.Type != ActionType {
 			log.Printf("ignoring action with name '%s', type '%s', value '%s'", action.Name, action.Type, action.Value)
@@ -185,6 +184,7 @@ func (s *slackClient) createSilence(messageAction slackevents.MessageAction, dur
 		userName = SilenceDefaultAuthor
 	}
 
+	log.Printf("user %s created silence for alert %s, labels: %v", userName, alert.Name(), alert.Labels)
 	if err := s.alertmanagerClient.CreateSilence(
 		alert,
 		userName,
