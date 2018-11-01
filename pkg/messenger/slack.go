@@ -20,28 +20,33 @@
 package messenger
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"log"
-	"net/http"
-	"regexp"
-	"strings"
-	"time"
-
 	"github.com/nlopes/slack"
 	"github.com/nlopes/slack/slackevents"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/alertmanager"
-	"github.com/sapcc/stargate/pkg/api"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/util"
+	"log"
+	"net/http"
+	"regexp"
+	"strings"
+	"time"
 )
 
 const (
+	// DurationOneDay is a day in hours
+	DurationOneDay = 24 * time.Hour
+
 	// Silence8h action type
 	Silence8h = "silence8h"
+
+	// Silence7d action type
+	Silence7d = "silence7d"
+
+	// Silence1month action type
+	Silence1month = "silence1month"
 
 	// ActionName the name of the action the stargate is responding to
 	ActionName = "reaction"
@@ -90,7 +95,7 @@ func NewSlackClient(config config.Config, isDebug bool) Receiver {
 	}
 
 	if err := slackClient.getAuthorizedSlackUserGroupMembers(); err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to get authorized slack users: %v", err)
 	}
 
 	return slackClient
@@ -98,55 +103,48 @@ func NewSlackClient(config config.Config, isDebug bool) Receiver {
 
 // HandleMessage handles a messenger message
 func (s *slackClient) HandleMessage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		api.RespondWithError(405, "This endpoint only supports POST", w)
-		return
+	log.Println("received slack message")
+	w.WriteHeader(http.StatusNoContent)
+
+	r.ParseForm()
+	var payload string
+	for k, v := range r.Form {
+		if k == "payload" && len(v) == 1 {
+			payload = v[0]
+			break
+		}
 	}
 
-	log.Println("received slack message")
-
-	buf := new(bytes.Buffer)
-	buf.ReadFrom(r.Body)
+	if payload == "" {
+		log.Printf("empty paylod. request does not contain a slack message action event")
+		return
+	}
 
 	slackMessageAction, err := slackevents.ParseActionEvent(
-		buf.String(),
+		payload,
 		slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: s.config.SlackConfig.GetValidationToken()}),
 	)
-
 	if err != nil {
 		if isErrorInvalidToken(err) {
-			api.RespondWithUnauthorized(w)
+			log.Printf("failed to verify slack message: %v", err)
 			return
 		}
-		api.RespondWithNoContent(w)
-		log.Printf("failed to read request body: %v", err)
+		log.Printf("failed to unmarshal request body: %v", err)
 		return
 	}
-
-	if slackMessageAction.Type == slackevents.URLVerification {
-		var c *slackevents.ChallengeResponse
-		err := json.Unmarshal([]byte(buf.String()), &c)
-		if err != nil {
-			log.Printf("failed to unmarshal request body: %v", err)
-		}
-		w.Header().Set("Content-Type", "text")
-		w.Write([]byte(c.Challenge))
-	}
-
 	if !s.isUserAuthorized(slackMessageAction.User.Id) {
-		api.RespondWithNoContent(w)
 		log.Printf("user with ID '%s' is not authorized to respond to a message", slackMessageAction.User.Id)
 		return
 	}
 
 	if err := s.checkAction(slackMessageAction); err != nil {
-		api.RespondWithNoContent(w)
 		log.Printf("failed to respond to slack message: %v", err)
 	}
 }
 
 func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error {
 	for _, action := range messageAction.Actions {
+		log.Printf("found action %s in message", action.Value)
 		// only react to buttons clicks
 		if action.Name != ActionName || action.Type != ActionType {
 			log.Printf("ignoring action with name '%s', type '%s', value '%s'", action.Name, action.Type, action.Value)
@@ -154,33 +152,18 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 		}
 
 		switch action.Value {
-		// create a silence for 8h
 		case Silence8h:
-			alert, err := s.alertFromSlackMessage(messageAction.OriginalMessage)
-			if err != nil {
-				return errors.Wrapf(err, "failed to construct alert from slack message")
+			if err := s.createSilence(messageAction, 8*time.Hour); err != nil {
+				log.Printf("error creating silence: %v", err)
 			}
-
-			userName, err := s.slackUserIDToName(messageAction.User.Id)
-			if err != nil {
-				log.Printf("error finding slack user by id: %v", err)
-				userName = SilenceDefaultAuthor
+		case Silence7d:
+			if err := s.createSilence(messageAction, 7*DurationOneDay); err != nil {
+				log.Printf("error creating silence: %v", err)
 			}
-
-			if err := s.alertmanagerClient.CreateSilence(
-				alert,
-				userName,
-				SilenceDefaultComment,
-				8*time.Hour,
-			); err != nil {
-				return errors.Wrapf(err, "error creating silence")
+		case Silence1month:
+			if err := s.createSilence(messageAction, 31*DurationOneDay); err != nil {
+				log.Printf("error creating silence: %v", err)
 			}
-
-			// Confirm the silence was successfully created by posting to the channel
-			s.addReactionToMessage(messageAction.OriginalMessage, SilenceSuccessReactionEmoji)
-
-			// Confirm the silence was successfully created by posting to the channel
-			//s.postToChannel(messageAction.Channel.Id, fmt.Sprintf("Created silence for alert %s", alert.Name()))
 
 		default:
 			log.Printf("not responding to action '%s'", action.Value)
@@ -190,8 +173,52 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 	return nil
 }
 
+func (s *slackClient) createSilence(messageAction slackevents.MessageAction, duration time.Duration) error {
+	alert, err := s.alertFromSlackMessage(messageAction.OriginalMessage)
+	if err != nil {
+		return errors.Wrapf(err, "failed to construct alert from slack message")
+	}
+
+	userName, err := s.slackUserIDToName(messageAction.User.Id)
+	if err != nil {
+		log.Printf("error finding slack user by id: %v", err)
+		userName = SilenceDefaultAuthor
+	}
+
+	if err := s.alertmanagerClient.CreateSilence(
+		alert,
+		userName,
+		SilenceDefaultComment,
+		duration,
+	); err != nil {
+		return errors.Wrapf(err, "error creating silence")
+	}
+
+	// Confirm the silence was successfully created by posting to the channel
+	s.addReactionToMessage(messageAction.OriginalMessage, SilenceSuccessReactionEmoji)
+
+	// Confirm the silence was successfully created by posting to the channel
+	//s.postToChannel(messageAction.Channel.Id, fmt.Sprintf("Created silence for alert %s", alert.Name()))
+
+	return nil
+}
+
 func (s *slackClient) alertFromSlackMessage(message slack.Message) (*model.Alert, error) {
-	labels, err := parseAlertFromSlackMessageText(message.Text)
+	var text string
+	// sometimes it's message.Text
+	if message.Text != "" {
+		text = message.Text
+	// sometimes it's in the attachment
+	} else if message.Attachments != nil && len(message.Attachments) > 0 {
+		for _, attach := range message.Attachments {
+			if attach.Text != "" {
+				text = attach.Text
+				break
+			}
+		}
+	}
+
+	labels, err := parseAlertFromSlackMessageText(text)
 	if err != nil {
 		return &model.Alert{}, err
 	}
@@ -214,6 +241,11 @@ func isErrorInvalidToken(err error) bool {
 }
 
 func (s *slackClient) getAuthorizedSlackUserGroupMembers() error {
+	log.Printf(
+		"authorizing members of slack users groups: %v",
+		strings.Join(s.config.SlackConfig.AuthorizedGroups, ", "),
+	)
+
 	userGroupIDs, err := s.userGroupNamesToIDs(s.config.SlackConfig.AuthorizedGroups)
 	if err != nil {
 		return err
@@ -229,8 +261,8 @@ func (s *slackClient) getAuthorizedSlackUserGroupMembers() error {
 		authorizedUserIDs = append(authorizedUserIDs, members...)
 	}
 
-	if authorizedUserIDs == nil {
-		return errors.New("not a single user is authorized to respond to slack messages. check config")
+	if authorizedUserIDs == nil || len(authorizedUserIDs) == 0 {
+		return errors.New("not a single user is authorized to respond to slack messages. check `authorized_groups` in config")
 	}
 
 	s.authorizedUserIDs = authorizedUserIDs
@@ -290,7 +322,7 @@ func parseAlertFromSlackMessageText(text string) (map[string]string, error) {
 	}
 
 	if matchMap == nil || len(matchMap) == 0 {
-		return nil, fmt.Errorf("no alert found in slack message: %s", text)
+		return nil, fmt.Errorf("no alert found in slack message with text '%s'", text)
 	}
 
 	return matchMap, nil

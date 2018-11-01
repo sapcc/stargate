@@ -12,9 +12,13 @@ metadata:
 data:
   stargate.yaml: |
     slack:
-      signing_secret: {{ default "" .Values.slack.signing_secret | quote }}
-      verification_token: {{ default "" .Values.slack.verification_token | quote }}
-      access_token: {{ default "" .Values.slack.access_token | quote }}
+      {{- if .Values.slack.signing_secret }}
+      signing_secret: {{ .Values.slack.signing_secret | quote }}
+      {{- end }}
+      {{- if .Values.slack.verification_token }}
+      verification_token: {{ .Values.slack.verification_token | quote }}
+      {{- end }}
+      access_token: {{ required "missing slack.access_token" .Values.slack.access_token | quote }}
       authorized_groups:
 {{ toYaml .Values.slack.authorized_groups | indent 8 }}
 
