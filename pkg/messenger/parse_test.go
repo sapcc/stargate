@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/sapcc/stargate/pkg/util"
 )
 
 const (
@@ -79,7 +80,7 @@ func TestParseAlertFromSlackMessageText(t *testing.T) {
 		assert.NoError(t, err, "there should be no error parsing the slack message text: %s", stimuli)
 
 		assert.NotEmpty(t, actualMatchMap, "should have found the severity, region, alertname in the test string")
-		AssertDeepEqual(t, expectedMatchMap, actualMatchMap)
+		util.AssertDeepEqual(t, expectedMatchMap, actualMatchMap)
 	}
 }
 
@@ -90,26 +91,4 @@ func TestParseSlackMessageTextResolvedAlert(t *testing.T) {
 		"ignoring resolved message",
 		"should throw an error as resolved messages are ignored",
 	)
-}
-
-func AssertDeepEqual(t *testing.T, expectedStringMap, actualStringMap map[string]string) bool {
-	if len(actualStringMap) != len(expectedStringMap) {
-		t.Errorf("want: %#v, got: %#v", expectedStringMap, actualStringMap)
-	}
-	for _, itm := range expectedStringMap {
-		if !Contains(actualStringMap, itm) {
-			t.Errorf("missing '%s'. want: %#v, got: %#v", itm, expectedStringMap, actualStringMap)
-			return false
-		}
-	}
-	return true
-}
-
-func Contains(stringMap map[string]string, str string) bool {
-	for _, s := range stringMap {
-		if s == str {
-			return true
-		}
-	}
-	return false
 }

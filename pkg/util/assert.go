@@ -19,12 +19,18 @@
 
 package util
 
-// StringSliceContains checks whether a string slice contains a string
-func StringSliceContains(stringSlice []string, searchString string) bool {
-	for _, s := range stringSlice {
-		if s == searchString {
-			return true
+import "testing"
+
+// AssertDeepEqual asserts two map[strings]string are equal
+func AssertDeepEqual(t *testing.T, expectedStringMap, actualStringMap map[string]string) bool {
+	if len(actualStringMap) != len(expectedStringMap) {
+		t.Errorf("want: %#v, got: %#v", expectedStringMap, actualStringMap)
+	}
+	for _, itm := range expectedStringMap {
+		if !StringMapContains(actualStringMap, itm) {
+			t.Errorf("missing '%s'. want: %#v, got: %#v", itm, expectedStringMap, actualStringMap)
+			return false
 		}
 	}
-	return false
+	return true
 }
