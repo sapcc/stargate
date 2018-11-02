@@ -70,7 +70,7 @@ const (
 	SilenceDefaultComment = "silenced by the stargate"
 
 	// SeverityRegionRegex ...
-	SeverityRegionRegex = `\*\[(?P<severity>.+)\]\* \*\[(?P<region>.+)\]\*.*\|(?P<alertname>.+)\>\* \- .+`
+	SeverityRegionRegex = `\*\[(?P<severity>.+)\]\* \*\[(?P<region>.+)\]\*.*\|(?P<alertname>.+)\>\* \-.*`
 )
 
 type slackClient struct {
