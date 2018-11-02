@@ -63,6 +63,8 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, author, comment s
 		return errors.New("author must no be empty")
 	}
 
+	log.Printf("creating silence for alert: %v, duration: %v, author: %s", alert.Labels, duration, author)
+
 	now := time.Now().UTC()
 
 	silence := types.Silence{

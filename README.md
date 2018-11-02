@@ -37,6 +37,17 @@ alertmanager:
   url: <string>
 ```
 
+The stargate requires the following slack scopes:
+```
+- incoming-webhook
+- usergroups:read
+- users:read
+- users.profile:read
+- reactions:write
+- chat:write:bot
+- chat:write:user
+```
+
 ## Installation & Usage
 
 ```

@@ -21,6 +21,12 @@ package messenger
 
 import (
 	"fmt"
+	"log"
+	"net/http"
+	"regexp"
+	"strings"
+	"time"
+
 	"github.com/nlopes/slack"
 	"github.com/nlopes/slack/slackevents"
 	"github.com/pkg/errors"
@@ -28,11 +34,6 @@ import (
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/util"
-	"log"
-	"net/http"
-	"regexp"
-	"strings"
-	"time"
 )
 
 const (
@@ -184,18 +185,18 @@ func (s *slackClient) createSilence(messageAction slackevents.MessageAction, dur
 		userName = SilenceDefaultAuthor
 	}
 
-	log.Printf("user %s created silence for alert %s, labels: %v", userName, alert.Name(), alert.Labels)
-	if err := s.alertmanagerClient.CreateSilence(
+	err = s.alertmanagerClient.CreateSilence(
 		alert,
 		userName,
 		SilenceDefaultComment,
 		duration,
-	); err != nil {
-		return errors.Wrapf(err, "error creating silence")
+	)
+	if err != nil {
+		return err
 	}
 
 	// Confirm the silence was successfully created by posting to the channel
-	s.addReactionToMessage(messageAction.OriginalMessage, SilenceSuccessReactionEmoji)
+	s.addReactionToMessage(messageAction.Channel.Id, messageAction.OriginalMessage.Timestamp, SilenceSuccessReactionEmoji)
 
 	// Confirm the silence was successfully created by posting to the channel
 	//s.postToChannel(messageAction.Channel.Id, fmt.Sprintf("Created silence for alert %s", alert.Name()))
@@ -208,7 +209,7 @@ func (s *slackClient) alertFromSlackMessage(message slack.Message) (*model.Alert
 	// sometimes it's message.Text
 	if message.Text != "" {
 		text = message.Text
-	// sometimes it's in the attachment
+		// sometimes it's in the attachment
 	} else if message.Attachments != nil && len(message.Attachments) > 0 {
 		for _, attach := range message.Attachments {
 			if attach.Text != "" {
@@ -338,8 +339,9 @@ func (s *slackClient) postToChannel(channel, message string) {
 	)
 }
 
-func (s *slackClient) addReactionToMessage(message slack.Message, reaction string) {
-	msgRef := slack.NewRefToMessage(message.Channel, message.Timestamp)
+func (s *slackClient) addReactionToMessage(channel, timestamp, reaction string) {
+	log.Printf("adding reaction '%s' to message with channel '%s', timestamp '%s", reaction, channel, timestamp)
+	msgRef := slack.NewRefToMessage(channel, timestamp)
 	if err := s.slackClient.AddReaction(reaction, msgRef); err != nil {
 		log.Printf("error adding reaction to message: %v", err)
 	}
