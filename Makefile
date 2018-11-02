@@ -31,12 +31,12 @@ static-check:
 tests: all static-check
 	go test -v github.com/sapcc/stargate/pkg/...
 
-push: build tag
+push: build
 	docker push $(IMAGE):$(VERSION)
-	docker push $(IMAGE):latest
 
-tag:
+latest: push
 	docker tag $(IMAGE):$(VERSION) $(IMAGE):latest
+	docker push $(IMAGE):latest
 
 clean:
 	rm -rf bin/*
