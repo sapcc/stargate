@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 
@@ -61,17 +60,14 @@ const (
 	// PostAsUserName appears in the messenger message
 	PostAsUserName = "stargate"
 
-	// SilenceSuccessReactionEmoji is applied to a message after it was successfully silenced
-	SilenceSuccessReactionEmoji = "silent-bell"
-
 	// SilenceDefaultAuthor is the default author used for a silence
 	SilenceDefaultAuthor = "stargate"
 
+	// SilenceSuccessReactionEmoji is applied to a message after it was successfully silenced
+	SilenceSuccessReactionEmoji = "silent-bell"
+
 	// SilenceDefaultComment is the default comment used for a silence
 	SilenceDefaultComment = "silenced by the stargate"
-
-	// SeverityRegionRegex ...
-	SeverityRegionRegex = `\*\[(?P<severity>.+)\]\* \*\[(?P<region>.+)\]\*.*\|(?P<alertname>.+)\>\* \-.*`
 )
 
 type slackClient struct {
@@ -102,27 +98,32 @@ func NewSlackClient(config config.Config, isDebug bool) Receiver {
 	return slackClient
 }
 
-// HandleMessage handles a messenger message
+// HandleMessage parses the payload and immediately returns 204 while actually handling the request in the background
 func (s *slackClient) HandleMessage(w http.ResponseWriter, r *http.Request) {
 	log.Println("received slack message")
 	w.WriteHeader(http.StatusNoContent)
-
 	r.ParseForm()
-	var payload string
+	var payloadString string
 	for k, v := range r.Form {
 		if k == "payload" && len(v) == 1 {
-			payload = v[0]
+			payloadString = v[0]
 			break
 		}
 	}
 
-	if payload == "" {
+	go s.handleSlackMessage(payloadString)
+
+	return
+}
+
+func (s *slackClient) handleSlackMessage(payloadString string) {
+	if payloadString == "" {
 		log.Printf("empty paylod. request does not contain a slack message action event")
 		return
 	}
 
 	slackMessageAction, err := slackevents.ParseActionEvent(
-		payload,
+		payloadString,
 		slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: s.config.SlackConfig.GetValidationToken()}),
 	)
 	if err != nil {
@@ -292,41 +293,13 @@ func (s *slackClient) isUserAuthorized(userID string) bool {
 	return util.StringSliceContains(s.authorizedUserIDs, userID)
 }
 
+// slackUserIDToName converts the userID to a human readable name in the format 'userRealName (userName)'
 func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 	user, err := s.slackClient.GetUserInfo(userID)
 	if err != nil {
 		return "", err
 	}
-	return user.Name, nil
-}
-
-func parseAlertFromSlackMessageText(text string) (map[string]string, error) {
-	severityRegionRegex := regexp.MustCompile(SeverityRegionRegex)
-	match := severityRegionRegex.FindStringSubmatch(text)
-	matchMap := make(map[string]string)
-	for i, name := range severityRegionRegex.SubexpNames() {
-		if i > 0 && i <= len(match) {
-			m := match[i]
-			if name == "severity" || name == "region" {
-				m = strings.ToLower(m)
-				if m == "resolved" {
-					return nil, fmt.Errorf("ignoring resolved message")
-				}
-				// 'warning - 2' -> warning
-				if strings.Contains(m, "-") {
-					s := strings.Split(m, "-")
-					m = strings.TrimSpace(s[0])
-				}
-			}
-			matchMap[name] = m
-		}
-	}
-
-	if matchMap == nil || len(matchMap) == 0 {
-		return nil, fmt.Errorf("no alert found in slack message with text '%s'", text)
-	}
-
-	return matchMap, nil
+	return fmt.Sprintf("%s (%s)", user.RealName, user.Name), nil
 }
 
 func (s *slackClient) postToChannel(channel, message string) {
