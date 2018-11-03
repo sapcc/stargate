@@ -34,9 +34,12 @@ tests: all static-check
 push: build
 	docker push $(IMAGE):$(VERSION)
 
-latest: push
+latest: push helm-values
 	docker tag $(IMAGE):$(VERSION) $(IMAGE):latest
 	docker push $(IMAGE):latest
+
+helm-values:
+	sed -i '' -e 's/tag:.*/tag: $(TAG)/g' helm/values.yaml
 
 clean:
 	rm -rf bin/*
