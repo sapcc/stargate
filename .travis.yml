@@ -29,7 +29,7 @@ after_success:
       # remember these
       REPO_URL=`git config remote.origin.url`
       SSH_REPO=${REPO_URL/https:\/\/github.com\//git@github.com:}
-      SHA=`git rev-parse --verify HEAD`
+      SHA=`git rev-parse --verify HEAD | head -c 8`
       # Deploy if there are some changes
       git diff --quiet
       if [ $? != 0 ]; then

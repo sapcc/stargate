@@ -1,6 +1,5 @@
-DATE    = $(shell date +%Y%m%d%H%M)
 IMAGE   ?= sapcc/stargate
-VERSION = v$(DATE)
+VERSION = $(shell git rev-parse --verify HEAD | head -c 8)
 GOOS    ?= $(shell go env | grep GOOS | cut -d'"' -f2)
 BINARY  := stargate
 
