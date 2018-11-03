@@ -39,7 +39,7 @@ latest: push helm-values
 	docker push $(IMAGE):latest
 
 helm-values:
-	sed -i '' -e 's/tag:.*/tag: $(TAG)/g' helm/values.yaml
+	sed -i '' -e 's/tag:.*/tag: $(VERSION)/g' ./helm/values.yaml
 
 clean:
 	rm -rf bin/*

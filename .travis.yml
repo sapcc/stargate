@@ -40,6 +40,5 @@ after_success:
       git add -A .
       git status
       git commit -m "Travis deploy ${SHA}"
-      # We can push.
       git push ${SSH_REPO}
     fi
