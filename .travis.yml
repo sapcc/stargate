@@ -28,7 +28,7 @@ after_success:
       make latest;
       # remember these
       REPO_URL=`git config remote.origin.url`
-      SSH_REPO=${REPO_URL/https:\/\/github.com\//git@github.com:}
+      SH_REPO=${REPO_URL/https:\/\/github.com\//git@github.com:}
       SHA=`git rev-parse --verify HEAD | head -c 8`
       # Deploy if there are some changes
       git diff --quiet
@@ -39,6 +39,6 @@ after_success:
         git add -A .
         git status
         git commit -m "Travis deploy ${SHA}"
-        git push ${SSH_REPO} ${TRAVIS_BRANCH}
+        git push ${GITHUB_TOKEN}@${SSH_REPO} ${TRAVIS_BRANCH}
       fi 
     fi
