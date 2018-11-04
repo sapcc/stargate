@@ -28,7 +28,7 @@ after_success:
       make latest;
       # remember these
       REPO_URL=`git config remote.origin.url`
-      SSH_REPO=${REPO_URL/https:\/\/github.com\//git@github.com:}
+      SSH_REPO=${REPO_URL/https:\/\/github.com\//git@github.com:master}
       SHA=`git rev-parse --verify HEAD | head -c 8`
       # Deploy if there are some changes
       git diff --quiet
