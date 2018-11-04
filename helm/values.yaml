@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   pullPolicy: IfNotPresent
   repository: sapcc/stargate
-  tag: latest
+  tag: 64e14302
 
 # the port used to expose the stargate API
 port: 8080
@@ -62,7 +62,7 @@ nginx-ingress-internet:
   controller:
     image:
       repository: sapcc/nginx-ingress-controller
-      tag: "0.19.0"
+      tag: 64e14302
 
     ingressClass: nginx-internet
 
@@ -146,7 +146,7 @@ nginx-ingress-internet:
 
     image:
       repository: sapcc/defaultbackend
-      tag: '1.4'
+      tag: 64e14302
       pullPolicy: IfNotPresent
 
     podAnnotations:
