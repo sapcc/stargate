@@ -57,12 +57,6 @@ const (
 	// Acknowledge action type
 	Acknowledge = "acknowledge"
 
-	// PostAsUserName appears in the messenger message
-	PostAsUserName = "stargate"
-
-	// SilenceDefaultAuthor is the default author used for a silence
-	SilenceDefaultAuthor = "stargate"
-
 	// SilenceSuccessReactionEmoji is applied to a message after it was successfully silenced
 	SilenceSuccessReactionEmoji = "silent-bell"
 
@@ -154,15 +148,15 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 
 		switch action.Value {
 		case Silence8h:
-			if err := s.createSilence(messageAction, 8*time.Hour); err != nil {
+			if err := s.createSilence(messageAction, 8 * time.Hour); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
 		case Silence7d:
-			if err := s.createSilence(messageAction, 7*DurationOneDay); err != nil {
+			if err := s.createSilence(messageAction, 7 * DurationOneDay); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
 		case Silence1month:
-			if err := s.createSilence(messageAction, 31*DurationOneDay); err != nil {
+			if err := s.createSilence(messageAction, 31 * DurationOneDay); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
 
@@ -183,7 +177,7 @@ func (s *slackClient) createSilence(messageAction slackevents.MessageAction, dur
 	userName, err := s.slackUserIDToName(messageAction.User.Id)
 	if err != nil {
 		log.Printf("error finding slack user by id: %v", err)
-		userName = SilenceDefaultAuthor
+		userName = s.config.SlackConfig.UserName
 	}
 
 	silenceID, err := s.alertmanagerClient.CreateSilence(
@@ -306,7 +300,10 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 
 func (s *slackClient) postMessageToChannel(channel, message, threadTimestamp string) error {
 	postMessageParameters := slack.PostMessageParameters{
-		Username: PostAsUserName,
+		Username: s.config.SlackConfig.UserName,
+	}
+	if s.config.SlackConfig.UserIcon != "" {
+		postMessageParameters.IconEmoji = s.config.SlackConfig.UserIcon
 	}
 
 	// respond to another message in an existing thread or create one

@@ -12,6 +12,10 @@ metadata:
 data:
   stargate.yaml: |
     slack:
+      user_name: {{ .Values.slack.user_name | quote }}
+      {{- if .Values.slack.user_icon }}
+      user_icon: {{ .Values.slack.user_icon | quote }}
+      {{- end }}
       {{- if .Values.slack.signing_secret }}
       signing_secret: {{ .Values.slack.signing_secret | quote }}
       {{- end }}

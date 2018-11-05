@@ -54,6 +54,12 @@ type slackConfig struct {
 
 	// verification token to verify messenger messenger
 	VerificationToken string `yaml:"verification_token"`
+
+	// user name for slack messages
+	UserName string `yaml:"user_name"`
+
+	// user icon for slack messages
+	UserIcon string `yaml:"user_icon"`
 }
 
 // NewConfig reads the configuration from the given filePath
@@ -94,6 +100,10 @@ func (s slackConfig) validate() {
 
 	if s.AccessToken == "" {
 		log.Fatal("incomplete messenger configuration: missing messenger `access_token`")
+	}
+
+	if s.UserName == "" {
+		s.UserName = "Stargate"
 	}
 }
 

@@ -12,7 +12,10 @@ port: 8080
 debugEnabled: false
 
 # Slack configuration
-slack: {}
+slack:
+  # username for slack messages
+  user_name: Stargate
+
   # Slack signs the requests we send you using this secret
   # Confirm that each request comes from Slack by verifying its unique signature.
   # signing_secret: DEFINED-IN-SECRETS
