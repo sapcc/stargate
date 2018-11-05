@@ -202,7 +202,7 @@ func (s *slackClient) createSilence(messageAction slackevents.MessageAction, dur
 	// Confirm the silence was successfully created by responding to the original message
 	return s.postMessageToChannel(
 		messageAction.Channel.Id,
-		fmt.Sprintf("%s silenced alert %s for %s. See %s", userName, alert.Name(), util.HumanizedDurationString(duration), s.alertmanagerClient.LinkToSilence(silenceID)),
+		fmt.Sprintf("%s silenced alert %s for %s. <%s|Silence>", userName, alert.Name(), util.HumanizedDurationString(duration), s.alertmanagerClient.LinkToSilence(silenceID)),
 		messageAction.OriginalMessage.Timestamp,
 	)
 }
