@@ -186,7 +186,7 @@ func (s *slackClient) createSilence(messageAction slackevents.MessageAction, dur
 		userName = SilenceDefaultAuthor
 	}
 
-	err = s.alertmanagerClient.CreateSilence(
+	silenceID, err := s.alertmanagerClient.CreateSilence(
 		alert,
 		userName,
 		SilenceDefaultComment,
@@ -199,10 +199,12 @@ func (s *slackClient) createSilence(messageAction slackevents.MessageAction, dur
 	// Confirm the silence was successfully created by posting to the channel
 	s.addReactionToMessage(messageAction.Channel.Id, messageAction.OriginalMessage.Timestamp, SilenceSuccessReactionEmoji)
 
-	// Confirm the silence was successfully created by posting to the channel
-	//s.postToChannel(messageAction.Channel.Id, fmt.Sprintf("Created silence for alert %s", alert.Name()))
-
-	return nil
+	// Confirm the silence was successfully created by responding to the original message
+	return s.postMessageToChannel(
+		messageAction.Channel.Id,
+		fmt.Sprintf("%s silenced alert %s for %s. See %s", userName, alert.Name(), util.HumanizedDurationString(duration), s.alertmanagerClient.LinkToSilence(silenceID)),
+		messageAction.OriginalMessage.Timestamp,
+	)
 }
 
 func (s *slackClient) alertFromSlackMessage(message slack.Message) (*model.Alert, error) {
@@ -299,17 +301,25 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s (%s)", user.RealName, user.Name), nil
+	return fmt.Sprintf("%s (%s)", user.RealName, strings.ToUpper(user.Name)), nil
 }
 
-func (s *slackClient) postToChannel(channel, message string) {
-	s.slackClient.PostMessage(
+func (s *slackClient) postMessageToChannel(channel, message, threadTimestamp string) error {
+	postMessageParameters := slack.PostMessageParameters{
+		Username: PostAsUserName,
+	}
+
+	// respond to another message in an existing thread or create one
+	if threadTimestamp != "" {
+		postMessageParameters.ThreadTimestamp = threadTimestamp
+	}
+
+	_, _, err := s.slackClient.PostMessage(
 		channel,
 		message,
-		slack.PostMessageParameters{
-			Username: PostAsUserName,
-		},
+		postMessageParameters,
 	)
+	return err
 }
 
 func (s *slackClient) addReactionToMessage(channel, timestamp, reaction string) {

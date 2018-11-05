@@ -30,10 +30,12 @@ import (
 	"github.com/prometheus/client_golang/api"
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/config"
+	"fmt"
 )
 
 type alertmanagerClient struct {
 	Alertmanager
+	Config config.Config
 
 	silenceAPIClient client.SilenceAPI
 }
@@ -48,19 +50,20 @@ func New(config config.Config) Alertmanager {
 	silenceAPI := client.NewSilenceAPI(apiClient)
 
 	return &alertmanagerClient{
+		Config: config,
 		silenceAPIClient: silenceAPI,
 	}
 }
 
-func (a *alertmanagerClient) CreateSilence(alert *model.Alert, author, comment string, duration time.Duration) error {
+func (a *alertmanagerClient) CreateSilence(alert *model.Alert, author, comment string, duration time.Duration) (string, error) {
 	if alert == nil {
-		return errors.New("alert must not be nil")
+		return "", errors.New("alert must not be nil")
 	}
 	if duration == 0 {
-		return errors.New("duration must be greater than 0")
+		return "", errors.New("duration must be greater than 0")
 	}
 	if author == "" {
-		return errors.New("author must no be empty")
+		return "", errors.New("author must no be empty")
 	}
 
 	log.Printf("creating silence for alert: %v, duration: %v, author: %s", alert.Labels, duration, author)
@@ -77,11 +80,15 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, author, comment s
 
 	silenceID, err := a.silenceAPIClient.Set(context.TODO(), silence)
 	if err != nil {
-		return err
+		return "", err
 	}
 	log.Printf("created silence with ID '%s'", silenceID)
 
-	return nil
+	return silenceID, nil
+}
+
+func (a *alertmanagerClient) LinkToSilence(silenceID string) string {
+	return fmt.Sprintf("%s/#/silences/%s", a.Config.AlertManager.URL, silenceID)
 }
 
 func matchersFromAlert(alert *model.Alert) types.Matchers {

@@ -17,16 +17,20 @@
 *
 *******************************************************************************/
 
-package alertmanager
+package util
 
 import (
-	"time"
-
-	"github.com/prometheus/common/model"
+  "time"
+  "github.com/dustin/go-humanize"
 )
 
-// Alertmanager ...
-type Alertmanager interface {
-	CreateSilence(alert *model.Alert, author, comment string, duration time.Duration) (string, error)
-	LinkToSilence(silenceID string) string
+// HumanizedDurationString returns a humanized string of a duration
+func HumanizedDurationString(duration time.Duration) string {
+  now := time.Now().UTC()
+  return humanize.RelTime(
+    now,
+    now.Add(duration),
+    "",
+    "",
+  )
 }

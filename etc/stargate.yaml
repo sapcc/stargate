@@ -1,6 +1,6 @@
 slack:
   signing_secret: "secretSigningSecret"
-  verification_token: ""
+  verification_token: "verificationToken"
   access_token: "secretAccessToken"
   authorized_groups:
     - admin
