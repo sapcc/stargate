@@ -323,6 +323,7 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 func (s *slackClient) postMessageToChannel(channel, message, threadTimestamp string) error {
 	postMessageParameters := slack.PostMessageParameters{
 		Username: s.config.SlackConfig.UserName,
+		LinkNames: 1,
 	}
 	if s.config.SlackConfig.UserIcon != "" {
 		postMessageParameters.IconEmoji = s.config.SlackConfig.UserIcon
