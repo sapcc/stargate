@@ -38,3 +38,17 @@ func HumanizedDurationString(duration time.Duration) string {
 	)
 	return strings.TrimSpace(humanizedDurationString)
 }
+
+// TimeUntilNextMonday returns the number of days until the next monday
+func TimeUntilNextMonday(t0 time.Time) int {
+	daysToAdd := (int(time.Monday) - int(t0.Weekday()) + 7) % 7;
+	if daysToAdd == 0 {
+		daysToAdd = 7
+	}
+	return daysToAdd
+}
+
+// DaysToHours returns the given number of days in hours
+func DaysToHours(days int) time.Duration {
+	return time.Duration(days) * 24 * time.Hour
+}

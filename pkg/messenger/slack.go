@@ -35,30 +35,28 @@ import (
 	"github.com/sapcc/stargate/pkg/util"
 )
 
+var reactionTypes = struct {
+	Acknowledge,
+	SilenceUntilMonday,
+	Silence1Month string
+}{
+	"acknowledge",
+	"silenceUntilMonday",
+	"silence1Month",
+}
+
 const (
-	// DurationOneDay is a day in hours
-	DurationOneDay = 24 * time.Hour
-
-	// Silence8h action type
-	Silence8h = "silence8h"
-
-	// Silence7d action type
-	Silence7d = "silence7d"
-
-	// Silence1month action type
-	Silence1month = "silence1month"
-
 	// ActionName the name of the action the stargate is responding to
 	ActionName = "reaction"
 
 	// ActionType the type of the action the stargate is responding to
 	ActionType = "button"
 
-	// Acknowledge action type
-	Acknowledge = "acknowledge"
-
 	// SilenceSuccessReactionEmoji is applied to a message after it was successfully silenced
 	SilenceSuccessReactionEmoji = "silent-bell"
+
+	// AcknowledgeReactionEmoji is applied to a message after it was successfully acknowledged
+	AcknowledgeReactionEmoji = "male-firefighter"
 
 	// SilenceDefaultComment is the default comment used for a silence
 	SilenceDefaultComment = "silenced by the stargate"
@@ -147,16 +145,17 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 		}
 
 		switch action.Value {
-		case Silence8h:
-			if err := s.createSilence(messageAction, 8 * time.Hour); err != nil {
+		case reactionTypes.Acknowledge:
+			if err := s.acknowledge(messageAction); err != nil {
+				log.Printf("failed to acknowledge: %v", err)
+			}
+		case reactionTypes.SilenceUntilMonday:
+			durationDays := util.TimeUntilNextMonday(time.Now().UTC())
+			if err := s.createSilence(messageAction, util.DaysToHours(durationDays)); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
-		case Silence7d:
-			if err := s.createSilence(messageAction, 7 * DurationOneDay); err != nil {
-				log.Printf("error creating silence: %v", err)
-			}
-		case Silence1month:
-			if err := s.createSilence(messageAction, 31 * DurationOneDay); err != nil {
+		case reactionTypes.Silence1Month:
+			if err := s.createSilence(messageAction, util.DaysToHours(31)); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
 
@@ -166,6 +165,26 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 	}
 
 	return nil
+}
+
+func (s *slackClient) acknowledge(messageAction slackevents.MessageAction) error {
+	userName, err := s.slackUserIDToName(messageAction.User.Id)
+	if err != nil {
+		log.Printf("error finding slack user by id: %v", err)
+		userName = s.config.SlackConfig.UserName
+	}
+
+	s.addReactionToMessage(
+		messageAction.Channel.Id,
+		messageAction.OriginalMessage.Timestamp,
+		AcknowledgeReactionEmoji,
+	)
+
+	return s.postMessageToChannel(
+		messageAction.Channel.Id,
+		fmt.Sprintf("Acknowledged by @%s", userName),
+		messageAction.OriginalMessage.Timestamp,
+	)
 }
 
 func (s *slackClient) createSilence(messageAction slackevents.MessageAction, duration time.Duration) error {
@@ -294,6 +313,9 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 	user, err := s.slackClient.GetUserInfo(userID)
 	if err != nil {
 		return "", err
+	}
+	if strings.ToUpper(user.RealName) == strings.ToUpper(user.Name) {
+		return user.RealName, nil
 	}
 	return fmt.Sprintf("%s (%s)", user.RealName, strings.ToUpper(user.Name)), nil
 }
