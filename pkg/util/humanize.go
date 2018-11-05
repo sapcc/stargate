@@ -20,17 +20,21 @@
 package util
 
 import (
-  "time"
-  "github.com/dustin/go-humanize"
+	"strings"
+	"time"
+
+	"github.com/dustin/go-humanize"
 )
 
 // HumanizedDurationString returns a humanized string of a duration
+// examples: 8h0m0s => 8 hours, 168h0m0s => 1 week
 func HumanizedDurationString(duration time.Duration) string {
-  now := time.Now().UTC()
-  return humanize.RelTime(
-    now,
-    now.Add(duration),
-    "",
-    "",
-  )
+	now := time.Now().UTC()
+	humanizedDurationString := humanize.RelTime(
+		now,
+		now.Add(duration),
+		"",
+		"",
+	)
+	return strings.TrimSpace(humanizedDurationString)
 }
