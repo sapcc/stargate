@@ -69,16 +69,26 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, author, comment s
 	log.Printf("creating silence for alert: %v, duration: %v, author: %s", alert.Labels, duration, author)
 
 	now := time.Now().UTC()
+	silenceMatchers := matchersFromAlert(alert)
+
+	silenceID, isExists, err := a.isSilenceExists(silenceMatchers)
+	if err != nil {
+	  return "", err
+  }
+  if isExists {
+    log.Printf("silence with matchers %v already exists. not creating again", silenceMatchers)
+    return silenceID, err
+  }
 
 	silence := types.Silence{
-		Matchers:  matchersFromAlert(alert),
+		Matchers:  silenceMatchers,
 		StartsAt:  now,
 		EndsAt:    now.Add(duration),
 		CreatedBy: author,
 		Comment:   comment,
 	}
 
-	silenceID, err := a.silenceAPIClient.Set(context.TODO(), silence)
+	silenceID, err = a.silenceAPIClient.Set(context.TODO(), silence)
 	if err != nil {
 		return "", err
 	}
@@ -87,8 +97,32 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, author, comment s
 	return silenceID, nil
 }
 
+func (a *alertmanagerClient) isSilenceExists(matchers types.Matchers) (string, bool, error) {
+  mathersNoAuthor := matchersWithoutAuthor(matchers)
+  silences, err := a.silenceAPIClient.List(context.TODO(), mathersNoAuthor.String())
+  if err != nil {
+    return "", false, err
+  }
+  for _, s := range silences {
+    if matchersWithoutAuthor(s.Matchers).Equal(mathersNoAuthor) {
+      return s.ID, true, nil
+    }
+  }
+  return "", false, nil
+}
+
 func (a *alertmanagerClient) LinkToSilence(silenceID string) string {
 	return fmt.Sprintf("%s/#/silences/%s", a.Config.AlertManager.URL, silenceID)
+}
+
+func matchersWithoutAuthor(matchers types.Matchers) types.Matchers {
+  matcherWithoutAuthor := make([]*types.Matcher, 0)
+  for _, m := range matchers {
+    if m.Name != "createdBy" {
+      matcherWithoutAuthor = append(matcherWithoutAuthor, m)
+    }
+  }
+  return matcherWithoutAuthor
 }
 
 func matchersFromAlert(alert *model.Alert) types.Matchers {
