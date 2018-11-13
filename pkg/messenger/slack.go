@@ -35,33 +35,6 @@ import (
 	"github.com/sapcc/stargate/pkg/util"
 )
 
-var reactionTypes = struct {
-	Acknowledge,
-	SilenceUntilMonday,
-	Silence1Month string
-}{
-	"acknowledge",
-	"silenceUntilMonday",
-	"silence1Month",
-}
-
-const (
-	// ActionName the name of the action the stargate is responding to
-	ActionName = "reaction"
-
-	// ActionType the type of the action the stargate is responding to
-	ActionType = "button"
-
-	// SilenceSuccessReactionEmoji is applied to a message after it was successfully silenced
-	SilenceSuccessReactionEmoji = "silent-bell"
-
-	// AcknowledgeReactionEmoji is applied to a message after it was successfully acknowledged
-	AcknowledgeReactionEmoji = "male-firefighter"
-
-	// SilenceDefaultComment is the default comment used for a silence
-	SilenceDefaultComment = "silenced by the stargate"
-)
-
 type slackClient struct {
 	config config.Config
 
@@ -103,12 +76,12 @@ func (s *slackClient) HandleMessage(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	go s.handleSlackMessage(payloadString)
+	go s.handler(payloadString)
 
 	return
 }
 
-func (s *slackClient) handleSlackMessage(payloadString string) {
+func (s *slackClient) handler(payloadString string) {
 	if payloadString == "" {
 		log.Printf("empty paylod. request does not contain a slack message action event")
 		return
@@ -136,6 +109,7 @@ func (s *slackClient) handleSlackMessage(payloadString string) {
 	}
 }
 
+// check which action was selected (if any)
 func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error {
 	for _, action := range messageAction.Actions {
 		// only react to buttons clicks
@@ -146,16 +120,16 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 
 		switch action.Value {
 		case reactionTypes.Acknowledge:
-			if err := s.acknowledge(messageAction); err != nil {
+			if err := s.acknowledgeAlert(messageAction); err != nil {
 				log.Printf("failed to acknowledge: %v", err)
 			}
 		case reactionTypes.SilenceUntilMonday:
 			durationDays := util.TimeUntilNextMonday(time.Now().UTC())
-			if err := s.createSilence(messageAction, util.DaysToHours(durationDays)); err != nil {
+			if err := s.silenceAlert(messageAction, util.DaysToHours(durationDays)); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
 		case reactionTypes.Silence1Month:
-			if err := s.createSilence(messageAction, util.DaysToHours(31)); err != nil {
+			if err := s.silenceAlert(messageAction, util.DaysToHours(31)); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
 
@@ -167,11 +141,21 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 	return nil
 }
 
-func (s *slackClient) acknowledge(messageAction slackevents.MessageAction) error {
+// acknowledgeAlert acknowledges an alert
+func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) error {
+	alert, err := s.alertFromSlackMessage(messageAction.OriginalMessage)
+	if err != nil {
+		return errors.Wrapf(err, "failed to construct alert from slack message")
+	}
+
 	userName, err := s.slackUserIDToName(messageAction.User.Id)
 	if err != nil {
 		log.Printf("error finding slack user by id: %v", err)
 		userName = s.config.SlackConfig.UserName
+	}
+
+	if err := s.alertmanagerClient.AcknowledgeAlert(alert, userName); err != nil {
+		return err
 	}
 
 	s.addReactionToMessage(
@@ -180,14 +164,15 @@ func (s *slackClient) acknowledge(messageAction slackevents.MessageAction) error
 		AcknowledgeReactionEmoji,
 	)
 
-	return s.postMessageToChannel(
+	return s.postMessageToThread(
 		messageAction.Channel.Id,
-		fmt.Sprintf("Acknowledged by @%s", userName),
+		fmt.Sprintf("Acknowledged by <@%s>", messageAction.User.Id),
 		messageAction.OriginalMessage.Timestamp,
 	)
 }
 
-func (s *slackClient) createSilence(messageAction slackevents.MessageAction, duration time.Duration) error {
+// silenceAlert extracts the alert from a text message and creates an alert for it
+func (s *slackClient) silenceAlert(messageAction slackevents.MessageAction, duration time.Duration) error {
 	alert, err := s.alertFromSlackMessage(messageAction.OriginalMessage)
 	if err != nil {
 		return errors.Wrapf(err, "failed to construct alert from slack message")
@@ -213,28 +198,16 @@ func (s *slackClient) createSilence(messageAction slackevents.MessageAction, dur
 	s.addReactionToMessage(messageAction.Channel.Id, messageAction.OriginalMessage.Timestamp, SilenceSuccessReactionEmoji)
 
 	// Confirm the silence was successfully created by responding to the original message
-	return s.postMessageToChannel(
+	return s.postMessageToThread(
 		messageAction.Channel.Id,
-		fmt.Sprintf("%s silenced alert %s for %s. <%s|See Silence>", userName, alert.Name(), util.HumanizedDurationString(duration), s.alertmanagerClient.LinkToSilence(silenceID)),
+		fmt.Sprintf("<@%s> silenced alert %s for %s. <%s|See Silence>", messageAction.User.Id, alert.Name(), util.HumanizedDurationString(duration), s.alertmanagerClient.LinkToSilence(silenceID)),
 		messageAction.OriginalMessage.Timestamp,
 	)
 }
 
+// alertFromSlackMessage extracts an alert from a message
 func (s *slackClient) alertFromSlackMessage(message slack.Message) (*model.Alert, error) {
-	var text string
-	// sometimes it's message.Text
-	if message.Text != "" {
-		text = message.Text
-		// sometimes it's in the attachment
-	} else if message.Attachments != nil && len(message.Attachments) > 0 {
-		for _, attach := range message.Attachments {
-			if attach.Text != "" {
-				text = attach.Text
-				break
-			}
-		}
-	}
-
+	text := messageTextFromSlack(message)
 	labels, err := parseAlertFromSlackMessageText(text)
 	if err != nil {
 		return &model.Alert{}, err
@@ -248,6 +221,22 @@ func (s *slackClient) alertFromSlackMessage(message slack.Message) (*model.Alert
 	return &model.Alert{
 		Labels: modelLabelset,
 	}, nil
+}
+
+func messageTextFromSlack(message slack.Message) string {
+	var text string
+	if message.Text != "" {
+		text = message.Text
+		// sometimes it's in the attachment
+	} else if message.Attachments != nil && len(message.Attachments) > 0 {
+		for _, attach := range message.Attachments {
+			if attach.Text != "" {
+				text = attach.Text
+				break
+			}
+		}
+	}
+	return text
 }
 
 func isErrorInvalidToken(err error) bool {
@@ -314,16 +303,24 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if strings.ToUpper(user.RealName) == strings.ToUpper(user.Name) {
-		return user.RealName, nil
+
+	var name string
+	if user.RealName != "" && strings.ToUpper(user.RealName) != strings.ToUpper(user.Name) {
+		name = user.RealName
+	} else if user.Profile.DisplayName != "" && strings.ToUpper(user.Profile.DisplayName) != strings.ToUpper(user.Name) {
+		name = user.Profile.DisplayName
 	}
-	return fmt.Sprintf("%s (%s)", user.RealName, strings.ToUpper(user.Name)), nil
+
+	if user.Name != "" {
+		return fmt.Sprintf("%s (%s)", name, strings.ToUpper(user.Name)), nil
+	}
+	return name, nil
 }
 
-func (s *slackClient) postMessageToChannel(channel, message, threadTimestamp string) error {
+func (s *slackClient) postMessageToThread(channel, message, threadTimestamp string) error {
 	postMessageParameters := slack.PostMessageParameters{
-		Username: s.config.SlackConfig.UserName,
-		LinkNames: 1,
+		Username:   s.config.SlackConfig.UserName,
+		LinkNames:  1,
 	}
 	if s.config.SlackConfig.UserIcon != "" {
 		postMessageParameters.IconEmoji = s.config.SlackConfig.UserIcon

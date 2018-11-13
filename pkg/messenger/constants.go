@@ -17,17 +17,31 @@
 *
 *******************************************************************************/
 
-package alertmanager
+package messenger
 
-import (
-	"time"
-
-	"github.com/prometheus/common/model"
-)
-
-// Alertmanager ...
-type Alertmanager interface {
-	CreateSilence(alert *model.Alert, author, comment string, duration time.Duration) (string, error)
-	LinkToSilence(silenceID string) string
-	AcknowledgeAlert(alert *model.Alert, acknowledgedBy string) error
+var reactionTypes = struct {
+  Acknowledge,
+  SilenceUntilMonday,
+  Silence1Month string
+}{
+  "acknowledge",
+  "silenceUntilMonday",
+  "silence1Month",
 }
+
+const (
+  // ActionName the name of the action the stargate is responding to
+  ActionName = "reaction"
+
+  // ActionType the type of the action the stargate is responding to
+  ActionType = "button"
+
+  // SilenceSuccessReactionEmoji is applied to a message after it was successfully silenced
+  SilenceSuccessReactionEmoji = "silent-bell"
+
+  // AcknowledgeReactionEmoji is applied to a message after it was successfully acknowledged
+  AcknowledgeReactionEmoji = "male-firefighter"
+
+  // SilenceDefaultComment is the default comment used for a silence
+  SilenceDefaultComment = "silenced by the stargate"
+)
