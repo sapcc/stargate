@@ -17,33 +17,20 @@
 *
 *******************************************************************************/
 
-package messenger
+package util
 
-var reactionTypes = struct {
-  Acknowledge,
-  SilenceUntilMonday,
-  Silence1Month,
-  Silence1Day string
-}{
-  "acknowledge",
-  "silenceUntilMonday",
-  "silence1Month",
-  "silence1Day",
-}
+import (
+	"fmt"
 
-const (
-  // ActionName the name of the action the stargate is responding to
-  ActionName = "reaction"
-
-  // ActionType the type of the action the stargate is responding to
-  ActionType = "button"
-
-  // SilenceSuccessReactionEmoji is applied to a message after it was successfully silenced
-  SilenceSuccessReactionEmoji = "silent-bell"
-
-  // AcknowledgeReactionEmoji is applied to a message after it was successfully acknowledged
-  AcknowledgeReactionEmoji = "male-firefighter"
-
-  // SilenceDefaultComment is the default comment used for a silence
-  SilenceDefaultComment = "silenced by the stargate"
+	"github.com/prometheus/common/model"
 )
+
+// GetRegionFromAlert extracts the region label from an alert
+func GetRegionFromAlert(alert *model.Alert) (string, error) {
+	for labelName, labelValue := range alert.Labels {
+		if labelName == "region" {
+			return string(labelValue), nil
+		}
+	}
+	return "", fmt.Errorf("no region label found in alert '%v'", alert)
+}

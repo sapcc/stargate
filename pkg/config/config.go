@@ -31,6 +31,7 @@ import (
 type Config struct {
 	AlertManager alertmanagerConfig `yaml:"alertmanager"`
 	SlackConfig  slackConfig        `yaml:"slack"`
+	PagerdutyConfig pagerdutyConfig `yaml:"pagerduty"`
 
 	ListenPort  int
 	ExternalURL string
@@ -60,6 +61,11 @@ type slackConfig struct {
 
 	// user icon for slack messages
 	UserIcon string `yaml:"user_icon"`
+}
+
+type pagerdutyConfig struct {
+	// Pagerduty auth token
+	AuthToken string `yaml:"auth_token"`
 }
 
 // NewConfig reads the configuration from the given filePath

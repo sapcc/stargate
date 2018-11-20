@@ -11,6 +11,8 @@ metadata:
 
 data:
   stargate.yaml: |
+    pagerduty:
+      auth_token: {{ .Values.pagerduty.auth_token | quote }}
     slack:
       user_name: {{ .Values.slack.user_name | quote }}
       {{- if .Values.slack.user_icon }}

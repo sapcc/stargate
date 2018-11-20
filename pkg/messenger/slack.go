@@ -32,6 +32,7 @@ import (
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/config"
+	"github.com/sapcc/stargate/pkg/pagerduty"
 	"github.com/sapcc/stargate/pkg/util"
 )
 
@@ -43,6 +44,7 @@ type slackClient struct {
 
 	slackClient        *slack.Client
 	alertmanagerClient alertmanager.Alertmanager
+	pagerdutyClient    *pagerduty.Client
 }
 
 // NewSlackClient returns a new receiver
@@ -54,6 +56,7 @@ func NewSlackClient(config config.Config, isDebug bool) Receiver {
 		config:             config,
 		alertmanagerClient: alertmanager.New(config),
 		slackClient:        s,
+		pagerdutyClient:    pagerduty.NewClient(config),
 	}
 
 	if err := slackClient.getAuthorizedSlackUserGroupMembers(); err != nil {
@@ -119,15 +122,23 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 		}
 
 		switch action.Value {
+
 		case reactionTypes.Acknowledge:
 			if err := s.acknowledgeAlert(messageAction); err != nil {
 				log.Printf("failed to acknowledge: %v", err)
 			}
+
 		case reactionTypes.SilenceUntilMonday:
 			durationDays := util.TimeUntilNextMonday(time.Now().UTC())
 			if err := s.silenceAlert(messageAction, util.DaysToHours(durationDays)); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
+
+		case reactionTypes.Silence1Day:
+			if err := s.silenceAlert(messageAction, util.DaysToHours(1)); err != nil {
+				log.Printf("error creating silence: %v", err)
+			}
+
 		case reactionTypes.Silence1Month:
 			if err := s.silenceAlert(messageAction, util.DaysToHours(31)); err != nil {
 				log.Printf("error creating silence: %v", err)
@@ -148,14 +159,21 @@ func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) 
 		return errors.Wrapf(err, "failed to construct alert from slack message")
 	}
 
+	// get human readable user name
 	userName, err := s.slackUserIDToName(messageAction.User.Id)
 	if err != nil {
 		log.Printf("error finding slack user by id: %v", err)
 		userName = s.config.SlackConfig.UserName
 	}
 
+	// acknowledge alert in the alertmanager
 	if err := s.alertmanagerClient.AcknowledgeAlert(alert, userName); err != nil {
-		return err
+		return errors.Wrapf(err, "alertmanager error")
+	}
+
+	// acknowledge alert in pagerduty
+	if err := s.pagerdutyClient.AcknowledgeIncident(alert, userName); err != nil {
+		return errors.Wrapf(err, "pagerduty error")
 	}
 
 	s.addReactionToMessage(
@@ -319,8 +337,8 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 
 func (s *slackClient) postMessageToThread(channel, message, threadTimestamp string) error {
 	postMessageParameters := slack.PostMessageParameters{
-		Username:   s.config.SlackConfig.UserName,
-		LinkNames:  1,
+		Username:  s.config.SlackConfig.UserName,
+		LinkNames: 1,
 	}
 	if s.config.SlackConfig.UserIcon != "" {
 		postMessageParameters.IconEmoji = s.config.SlackConfig.UserIcon
