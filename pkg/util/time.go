@@ -41,7 +41,7 @@ func HumanizedDurationString(duration time.Duration) string {
 
 // TimeUntilNextMonday returns the number of days until the next monday
 func TimeUntilNextMonday(t0 time.Time) int {
-	daysToAdd := (int(time.Monday) - int(t0.Weekday()) + 7) % 7;
+	daysToAdd := (int(time.Monday) - int(t0.Weekday()) + 7) % 7
 	if daysToAdd == 0 {
 		daysToAdd = 7
 	}

@@ -29,9 +29,9 @@ import (
 
 // Config ...
 type Config struct {
-	AlertManager alertmanagerConfig `yaml:"alertmanager"`
-	SlackConfig  slackConfig        `yaml:"slack"`
-	PagerdutyConfig pagerdutyConfig `yaml:"pagerduty"`
+	AlertManager    alertmanagerConfig `yaml:"alertmanager"`
+	SlackConfig     slackConfig        `yaml:"slack"`
+	PagerdutyConfig pagerdutyConfig    `yaml:"pagerduty"`
 
 	ListenPort  int
 	ExternalURL string

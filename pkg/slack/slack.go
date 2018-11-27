@@ -171,9 +171,9 @@ func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) 
 		return errors.Wrapf(err, "alertmanager error")
 	}
 
-	// acknowledge alert in pagerduty
+	// optionally acknowledge alert in pagerduty
 	if err := s.pagerdutyClient.AcknowledgeIncident(alert, userName); err != nil {
-		return errors.Wrapf(err, "pagerduty error")
+		log.Printf("failed to acknowledge in pagerduty: %v", err)
 	}
 
 	s.addReactionToMessage(

@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	summaryText = "[#1594] \n [EU-DE-1] OpenstackLbaasApiFlapping - lbaas API flapping\n"
+	summaryText         = "[#1594] \n [EU-DE-1] OpenstackLbaasApiFlapping - lbaas API flapping\n"
 	summaryTextWithLink = "[#1598] \n [AP-SA-1] BaremetalIronicSensorCritical - Sensor Critical for instance node009r-bm020.cc.ap-sa-1.cloud.sap\n"
 )
 
@@ -39,7 +39,7 @@ func TestParseAlertFromSlackMessageText(t *testing.T) {
 		},
 		summaryTextWithLink: {
 			"alertname": "BaremetalIronicSensorCritical",
-			"region": "ap-sa-1",
+			"region":    "ap-sa-1",
 		},
 	}
 

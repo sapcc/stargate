@@ -26,11 +26,11 @@ import (
 )
 
 const (
-  // SeverityRegionRemainderRegex finds the severity and region in the alert text
-  SeverityRegionRemainderRegex = `.*\*\[(?P<severity>.+?)(\s-.*)?\]\*\s\*\[(?P<region>.+?)\]\*(?P<remainder>.+?)(\>\*)?\s\-.*`
+	// SeverityRegionRemainderRegex finds the severity and region in the alert text
+	SeverityRegionRemainderRegex = `.*\*\[(?P<severity>.+?)(\s-.*)?\]\*\s\*\[(?P<region>.+?)\]\*(?P<remainder>.+?)(\>\*)?\s\-.*`
 
-  // AlertnameRemainderRegex finds the alertname from the remainder of the alert text
-  AlertnameRemainderRegex = `(.+\/#\/alerts.+\||\s)?(?P<alertname>.+)(\>\*)?`
+	// AlertnameRemainderRegex finds the alertname from the remainder of the alert text
+	AlertnameRemainderRegex = `(.+\/#\/alerts.+\||\s)?(?P<alertname>.+)(\>\*)?`
 )
 
 func parseAlertFromSlackMessageText(text string) (map[string]string, error) {
@@ -38,7 +38,7 @@ func parseAlertFromSlackMessageText(text string) (map[string]string, error) {
 	alertnameRemainderRegex := regexp.MustCompile(AlertnameRemainderRegex)
 	matchMap := make(map[string]string)
 
-  match := severityRegionRemainderRegex.FindStringSubmatch(text)
+	match := severityRegionRemainderRegex.FindStringSubmatch(text)
 	for i, name := range severityRegionRemainderRegex.SubexpNames() {
 		if i > 0 && i <= len(match) {
 			m := match[i]

@@ -27,10 +27,19 @@ import (
 
 // GetRegionFromAlert extracts the region label from an alert
 func GetRegionFromAlert(alert *model.Alert) (string, error) {
-	for labelName, labelValue := range alert.Labels {
-		if labelName == "region" {
+	return findLabelValueInAlert(alert, "region")
+}
+
+// GetSeverityFromAlert extract the severity label from an alert
+func GetSeverityFromAlert(alert *model.Alert) (string, error) {
+	return findLabelValueInAlert(alert, "severity")
+}
+
+func findLabelValueInAlert(alert *model.Alert, labelName string) (string, error) {
+	for ln, labelValue := range alert.Labels {
+		if string(ln) == labelName {
 			return string(labelValue), nil
 		}
 	}
-	return "", fmt.Errorf("no region label found in alert '%v'", alert)
+	return "", fmt.Errorf("label '%s' not found in alert '%v'", labelName, alert)
 }

@@ -20,13 +20,13 @@
 package pagerduty
 
 import (
-	"errors"
+	"fmt"
 	"github.com/PagerDuty/go-pagerduty"
+	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/config"
+	"github.com/sapcc/stargate/pkg/util"
 	"log"
 	"time"
-  "github.com/prometheus/common/model"
-  "github.com/sapcc/stargate/pkg/util"
 )
 
 // StatusAcknowledged ...
@@ -40,7 +40,7 @@ type Client struct {
 	pagerdutyClient *pagerduty.Client
 }
 
-// NewClient ...
+// NewClient creates a new pagerduty client
 func NewClient(config config.Config) *Client {
 	client := pagerduty.NewClient(config.PagerdutyConfig.AuthToken)
 	if client == nil {
@@ -51,12 +51,7 @@ func NewClient(config config.Config) *Client {
 
 // AcknowledgeIncident acknowledges a currently firing incident
 func (p *Client) AcknowledgeIncident(alert *model.Alert, userName string) error {
-  regionName, err := util.GetRegionFromAlert(alert)
-  if err != nil {
-    return err
-  }
-
-	incident, err := p.findIncident(alert.Name(), regionName)
+	incident, err := p.findIncident(alert)
 	if err != nil {
 		return err
 	}
@@ -68,8 +63,13 @@ func (p *Client) AcknowledgeIncident(alert *model.Alert, userName string) error 
 	return p.pagerdutyClient.ManageIncidents(userName, []pagerduty.Incident{*incident})
 }
 
-// findIncident finds an active incident in pagerduty by alertname, region
-func (p *Client) findIncident(alertname, region string) (*pagerduty.Incident, error) {
+// findIncident finds triggered incidents in pagerduty by alertname, region
+func (p *Client) findIncident(alert *model.Alert) (*pagerduty.Incident, error) {
+	regionName, err := util.GetRegionFromAlert(alert)
+	if err != nil {
+		return nil, err
+	}
+
 	incidentList, err := p.pagerdutyClient.ListIncidents(pagerduty.ListIncidentsOptions{
 		Statuses: []string{StatusTriggered},
 	})
@@ -78,20 +78,20 @@ func (p *Client) findIncident(alertname, region string) (*pagerduty.Incident, er
 	}
 
 	for _, incident := range incidentList.Incidents {
-    matchMap, err := parseRegionAndAlertnameFromPagerdutySummary(incident.APIObject.Summary)
-    if err != nil {
-      log.Printf("pagerduty incident summary '%s' does not contain a region and/or alertname", incident.APIObject.Summary)
-      continue
-    }
-    foundAlertname, nameOK := matchMap["alertname"]
-    foundRegion, regionOK := matchMap["region"]
-    if !nameOK || !regionOK {
-      log.Printf("pagerduty incident summary '%s' does not contain a region and/or alertname", incident.APIObject.Summary)
-      continue
-    }
-    if foundAlertname == alertname && foundRegion == region {
-      return &incident, nil
-    }
+		matchMap, err := parseRegionAndAlertnameFromPagerdutySummary(incident.APIObject.Summary)
+		if err != nil {
+			log.Printf("pagerduty incident summary '%s' does not contain a region and/or alertname", incident.APIObject.Summary)
+			continue
+		}
+		foundAlertname, nameOK := matchMap["alertname"]
+		foundRegion, regionOK := matchMap["region"]
+		if !nameOK || !regionOK {
+			log.Printf("pagerduty incident summary '%s' does not contain a region and/or alertname", incident.APIObject.Summary)
+			continue
+		}
+		if foundAlertname == alert.Name() && foundRegion == regionName {
+			return &incident, nil
+		}
 	}
-	return nil, errors.New("no incident found")
+	return nil, fmt.Errorf("no incident found for alert: %v", alert)
 }

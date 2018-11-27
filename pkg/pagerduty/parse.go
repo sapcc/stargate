@@ -20,33 +20,34 @@
 package pagerduty
 
 import (
-  "regexp"
-  "strings"
-  "fmt"
+	"fmt"
+	"regexp"
+	"strings"
 )
 
+// RegionAlertnameRegex is used to find the region and alertname from an incident text
 const RegionAlertnameRegex = `.*\s\[(?P<region>.+?)\]\s(?P<alertname>.+?)\s\-.*`
 
 func parseRegionAndAlertnameFromPagerdutySummary(summary string) (map[string]string, error) {
-  regionAlertnameRegex := regexp.MustCompile(RegionAlertnameRegex)
-  matchMap := make(map[string]string)
+	regionAlertnameRegex := regexp.MustCompile(RegionAlertnameRegex)
+	matchMap := make(map[string]string)
 
-  match := regionAlertnameRegex.FindStringSubmatch(summary)
-  for i, name := range regionAlertnameRegex.SubexpNames() {
-    if i > 0 && i <= len(match) {
-      m := match[i]
-      if name == "" {
-        continue
-      } else if name == "region" {
-        m = strings.ToLower(m)
-      }
-      matchMap[name] = m
-    }
-  }
+	match := regionAlertnameRegex.FindStringSubmatch(summary)
+	for i, name := range regionAlertnameRegex.SubexpNames() {
+		if i > 0 && i <= len(match) {
+			m := match[i]
+			if name == "" {
+				continue
+			} else if name == "region" {
+				m = strings.ToLower(m)
+			}
+			matchMap[name] = m
+		}
+	}
 
-  if len(matchMap) == 0 {
-    return nil, fmt.Errorf("pagerduty incident summary doesn not contain alertname and/or region: '%s'", summary)
-  }
+	if len(matchMap) == 0 {
+		return nil, fmt.Errorf("pagerduty incident summary doesn not contain alertname and/or region: '%s'", summary)
+	}
 
-  return matchMap, nil
+	return matchMap, nil
 }
