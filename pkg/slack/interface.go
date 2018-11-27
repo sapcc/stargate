@@ -17,33 +17,11 @@
 *
 *******************************************************************************/
 
-package messenger
+package slack
 
-var reactionTypes = struct {
-  Acknowledge,
-  SilenceUntilMonday,
-  Silence1Month,
-  Silence1Day string
-}{
-  "acknowledge",
-  "silenceUntilMonday",
-  "silence1Month",
-  "silence1Day",
+import "net/http"
+
+// Receiver ...
+type Receiver interface {
+	HandleMessage(w http.ResponseWriter, r *http.Request)
 }
-
-const (
-  // ActionName the name of the action the stargate is responding to
-  ActionName = "reaction"
-
-  // ActionType the type of the action the stargate is responding to
-  ActionType = "button"
-
-  // SilenceSuccessReactionEmoji is applied to a message after it was successfully silenced
-  SilenceSuccessReactionEmoji = "silent-bell"
-
-  // AcknowledgeReactionEmoji is applied to a message after it was successfully acknowledged
-  AcknowledgeReactionEmoji = "male-firefighter"
-
-  // SilenceDefaultComment is the default comment used for a silence
-  SilenceDefaultComment = "silenced by the stargate"
-)

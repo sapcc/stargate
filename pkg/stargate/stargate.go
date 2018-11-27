@@ -26,7 +26,7 @@ import (
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/api"
 	"github.com/sapcc/stargate/pkg/config"
-	"github.com/sapcc/stargate/pkg/messenger"
+	"github.com/sapcc/stargate/pkg/slack"
 )
 
 // Stargate ...
@@ -34,7 +34,7 @@ type Stargate struct {
 	v1API *api.API
 
 	alertmanagerClient alertmanager.Alertmanager
-	slack              messenger.Receiver
+	slack              slack.Receiver
 
 	Config config.Config
 }
@@ -48,7 +48,7 @@ func NewStargate(opts config.Options) *Stargate {
 
 	sg := &Stargate{
 		Config: cfg,
-		slack:  messenger.NewSlackClient(cfg, opts.IsDebug),
+		slack:  slack.NewSlackClient(cfg, opts.IsDebug),
 	}
 
 	v1API := api.NewAPI(cfg)

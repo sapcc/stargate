@@ -27,7 +27,7 @@ slack:
   # Use this token to authenticate the stargate
   # access_token: DEFINED-IN-SECRETS
 
-  # List of messenger user groups whose members are authorized to silence alerts, create tickets, etc.
+  # List of slack user groups whose members are authorized to silence alerts, create tickets, etc.
   # authorized_groups:
   #   - admin
 
