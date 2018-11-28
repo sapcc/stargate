@@ -31,6 +31,12 @@ var reactionTypes = struct {
 	"silence1Day",
 }
 
+var commandAction = struct {
+	ListAlerts string
+}{
+	"listAlerts",
+}
+
 const (
 	// ActionName the name of the action the stargate is responding to
 	ActionName = "reaction"
@@ -46,4 +52,7 @@ const (
 
 	// SilenceDefaultComment is the default comment used for a silence
 	SilenceDefaultComment = "silenced by the stargate"
+
+	// CommandCCloud ...
+	CommandCCloud = "/ccloud"
 )

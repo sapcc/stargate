@@ -22,6 +22,7 @@ package alertmanager
 import (
 	"time"
 
+	"github.com/prometheus/alertmanager/client"
 	"github.com/prometheus/common/model"
 )
 
@@ -30,4 +31,5 @@ type Alertmanager interface {
 	CreateSilence(alert *model.Alert, author, comment string, duration time.Duration) (string, error)
 	LinkToSilence(silenceID string) string
 	AcknowledgeAlert(alert *model.Alert, acknowledgedBy string) error
+	ListAlerts(filter map[string]string) ([]*client.ExtendedAlert, error)
 }

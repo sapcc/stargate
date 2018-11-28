@@ -22,7 +22,6 @@ package slack
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
@@ -66,92 +65,6 @@ func NewSlackClient(config config.Config, isDebug bool) Receiver {
 	return slackClient
 }
 
-// HandleMessage parses the payload and immediately returns 204 while actually handling the request in the background
-func (s *slackClient) HandleMessage(w http.ResponseWriter, r *http.Request) {
-	log.Println("received slack message")
-	w.WriteHeader(http.StatusNoContent)
-	r.ParseForm()
-	var payloadString string
-	for k, v := range r.Form {
-		if k == "payload" && len(v) == 1 {
-			payloadString = v[0]
-			break
-		}
-	}
-
-	go s.handler(payloadString)
-
-	return
-}
-
-func (s *slackClient) handler(payloadString string) {
-	if payloadString == "" {
-		log.Printf("empty paylod. request does not contain a slack message action event")
-		return
-	}
-
-	slackMessageAction, err := slackevents.ParseActionEvent(
-		payloadString,
-		slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: s.config.SlackConfig.GetValidationToken()}),
-	)
-	if err != nil {
-		if isErrorInvalidToken(err) {
-			log.Printf("failed to verify slack message: %v", err)
-			return
-		}
-		log.Printf("failed to unmarshal request body: %v", err)
-		return
-	}
-	if !s.isUserAuthorized(slackMessageAction.User.Id) {
-		log.Printf("user with ID '%s' is not authorized to respond to a message", slackMessageAction.User.Id)
-		return
-	}
-
-	if err := s.checkAction(slackMessageAction); err != nil {
-		log.Printf("failed to respond to slack message: %v", err)
-	}
-}
-
-// check which action was selected (if any)
-func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error {
-	for _, action := range messageAction.Actions {
-		// only react to buttons clicks
-		if action.Name != ActionName || action.Type != ActionType {
-			log.Printf("ignoring action with name '%s', type '%s', value '%s'", action.Name, action.Type, action.Value)
-			continue
-		}
-
-		switch action.Value {
-
-		case reactionTypes.Acknowledge:
-			if err := s.acknowledgeAlert(messageAction); err != nil {
-				log.Printf("failed to acknowledge: %v", err)
-			}
-
-		case reactionTypes.SilenceUntilMonday:
-			durationDays := util.TimeUntilNextMonday(time.Now().UTC())
-			if err := s.silenceAlert(messageAction, util.DaysToHours(durationDays)); err != nil {
-				log.Printf("error creating silence: %v", err)
-			}
-
-		case reactionTypes.Silence1Day:
-			if err := s.silenceAlert(messageAction, util.DaysToHours(1)); err != nil {
-				log.Printf("error creating silence: %v", err)
-			}
-
-		case reactionTypes.Silence1Month:
-			if err := s.silenceAlert(messageAction, util.DaysToHours(31)); err != nil {
-				log.Printf("error creating silence: %v", err)
-			}
-
-		default:
-			log.Printf("not responding to action '%s'", action.Value)
-		}
-	}
-
-	return nil
-}
-
 // acknowledgeAlert acknowledges an alert
 func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) error {
 	alert, err := s.alertFromSlackMessage(messageAction.OriginalMessage)
@@ -168,10 +81,10 @@ func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) 
 
 	// acknowledge alert in the alertmanager
 	if err := s.alertmanagerClient.AcknowledgeAlert(alert, userName); err != nil {
-		return errors.Wrapf(err, "alertmanager error")
+		log.Printf("failed to acknowledge in alertmanager: %v", err)
 	}
 
-	// optionally acknowledge alert in pagerduty
+	// acknowledge alert in pagerduty
 	if err := s.pagerdutyClient.AcknowledgeIncident(alert, userName); err != nil {
 		log.Printf("failed to acknowledge in pagerduty: %v", err)
 	}
@@ -182,7 +95,7 @@ func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) 
 		AcknowledgeReactionEmoji,
 	)
 
-	return s.postMessageToThread(
+	return s.postMessageToChannel(
 		messageAction.Channel.Id,
 		fmt.Sprintf("Acknowledged by <@%s>", messageAction.User.Id),
 		messageAction.OriginalMessage.Timestamp,
@@ -216,7 +129,7 @@ func (s *slackClient) silenceAlert(messageAction slackevents.MessageAction, dura
 	s.addReactionToMessage(messageAction.Channel.Id, messageAction.OriginalMessage.Timestamp, SilenceSuccessReactionEmoji)
 
 	// Confirm the silence was successfully created by responding to the original message
-	return s.postMessageToThread(
+	return s.postMessageToChannel(
 		messageAction.Channel.Id,
 		fmt.Sprintf("<@%s> silenced alert %s for %s. <%s|See Silence>", messageAction.User.Id, alert.Name(), util.HumanizedDurationString(duration), s.alertmanagerClient.LinkToSilence(silenceID)),
 		messageAction.OriginalMessage.Timestamp,
@@ -332,10 +245,11 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 	if user.Name != "" {
 		return fmt.Sprintf("%s (%s)", name, strings.ToUpper(user.Name)), nil
 	}
+
 	return name, nil
 }
 
-func (s *slackClient) postMessageToThread(channel, message, threadTimestamp string) error {
+func (s *slackClient) postMessageToChannel(channel, message, threadTimestamp string) error {
 	postMessageParameters := slack.PostMessageParameters{
 		Username:  s.config.SlackConfig.UserName,
 		LinkNames: 1,

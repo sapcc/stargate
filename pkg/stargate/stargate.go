@@ -54,10 +54,38 @@ func NewStargate(opts config.Options) *Stargate {
 	v1API := api.NewAPI(cfg)
 
 	// the v1 endpoint that accepts slack message actions
-	v1API.AddRouteV1(http.MethodPost, "/slack", sg.slack.HandleMessage)
+	v1API.AddRouteV1(http.MethodPost, "/slack/event", sg.HandleSlackMessageActionEvent)
+
+	// the v1 endpoint that accepts slack commands
+	v1API.AddRouteV1(http.MethodPost, "/slack/command", sg.HandleSlackCommand)
 
 	sg.v1API = v1API
 	return sg
+}
+
+// HandleSlackMessageActionEvent handles slack message action events
+func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.Request) {
+	log.Println("received slack message")
+	w.WriteHeader(http.StatusNoContent)
+	r.ParseForm()
+	var payloadString string
+	for k, v := range r.Form {
+		if k == "payload" && len(v) == 1 {
+			payloadString = v[0]
+			break
+		}
+	}
+
+	go s.slack.HandleSlackMessageActionEvent(payloadString)
+}
+
+// HandleSlackCommand handles slack commands
+func (s *Stargate) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
+	log.Println("received slack command")
+	w.WriteHeader(http.StatusNoContent)
+	r.ParseForm()
+
+	go s.slack.HandleSlackCommand(r)
 }
 
 // Run starts the stargate

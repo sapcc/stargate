@@ -23,5 +23,6 @@ import "net/http"
 
 // Receiver ...
 type Receiver interface {
-	HandleMessage(w http.ResponseWriter, r *http.Request)
+	HandleSlackMessageActionEvent(payload string)
+	HandleSlackCommand(r *http.Request)
 }

@@ -67,7 +67,7 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, silenceAuthor, si
 		return "", errors.New("duration must be greater than 0")
 	}
 	if silenceAuthor == "" {
-		return "", errors.New("author must no be empty")
+		return "", errors.New("author must not be empty")
 	}
 
 	log.Printf("creating silence for alert: %v, duration: %v, author: %s", alert.Labels, silenceDuration, silenceAuthor)
@@ -126,16 +126,26 @@ func (a *alertmanagerClient) AcknowledgeAlert(alert *model.Alert, acknowledgedBy
 	}
 
 	for idx, a := range alertList {
-		ack := string(a.Annotations[LabelNameAcknowledgedBy])
-		if ack != "" {
-			ack += fmt.Sprintf(", %s", acknowledgedBy)
+		ack, ok := a.Annotations[LabelNameAcknowledgedBy]
+		if ok && !strings.Contains(string(ack), acknowledgedBy) {
+			acknowledgedBy = fmt.Sprintf("%s, %s", ack, acknowledgedBy)
 		}
-		alertList[idx].Annotations[LabelNameAcknowledgedBy] = client.LabelValue(ack)
+		alertList[idx].Annotations[LabelNameAcknowledgedBy] = client.LabelValue(acknowledgedBy)
 	}
 
 	return a.alertAPIClient.Push(
 		context.TODO(),
 		alertList...,
+	)
+}
+
+func (a *alertmanagerClient) ListAlerts(filter map[string]string) ([]*client.ExtendedAlert, error) {
+	var filterList []string
+	for k, v := range filter {
+		filterList = append(filterList, fmt.Sprintf(`%s="%s"`, k, v))
+	}
+	return a.alertAPIClient.List(
+		context.TODO(), strings.Join(filterList, ","), "", true, true, true, false,
 	)
 }
 
