@@ -126,11 +126,11 @@ func (a *alertmanagerClient) AcknowledgeAlert(alert *model.Alert, acknowledgedBy
 	}
 
 	for idx, a := range alertList {
-		ack, ok := a.Annotations[LabelNameAcknowledgedBy]
+		ack, ok := a.Labels[LabelNameAcknowledgedBy]
 		if ok && !strings.Contains(string(ack), acknowledgedBy) {
 			acknowledgedBy = fmt.Sprintf("%s, %s", ack, acknowledgedBy)
 		}
-		alertList[idx].Annotations[LabelNameAcknowledgedBy] = client.LabelValue(acknowledgedBy)
+		alertList[idx].Labels[LabelNameAcknowledgedBy] = client.LabelValue(acknowledgedBy)
 	}
 
 	return a.alertAPIClient.Push(
