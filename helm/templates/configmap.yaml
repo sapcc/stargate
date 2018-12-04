@@ -25,6 +25,9 @@ data:
       verification_token: {{ .Values.slack.verification_token | quote }}
       {{- end }}
       access_token: {{ required "missing slack.access_token" .Values.slack.access_token | quote }}
+      {{- if .Values.slack.bot_user_access_token }}
+      bot_user_access_token: {{ .Values.slack.bot_user_access_token | quote }}
+      {{- end }}
       authorized_groups:
 {{ toYaml .Values.slack.authorized_groups | indent 8 }}
 

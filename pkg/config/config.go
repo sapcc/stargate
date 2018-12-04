@@ -47,24 +47,27 @@ type alertmanagerConfig struct {
 type slackConfig struct {
 	AuthorizedGroups []string `yaml:"authorized_groups"`
 
-	// the AccessToken to authenticate the stargate to messenger
+	// AccessToken to authenticate the stargate to messenger
 	AccessToken string `yaml:"access_token"`
 
-	// signing token to verify messenger messenger
+	// BotUserAccessToken is the access token used by the bot
+	BotUserAccessToken string `yaml:"bot_user_acces_token"`
+
+	// SigningSecret to verify slack messages
 	SigningSecret string `yaml:"signing_secret"`
 
-	// verification token to verify messenger messenger
+	// VerificationToken to verify slack messages
 	VerificationToken string `yaml:"verification_token"`
 
-	// user name for slack messages
+	// UserName for slack messages
 	UserName string `yaml:"user_name"`
 
-	// user icon for slack messages
+	// UserIcon for slack messages
 	UserIcon string `yaml:"user_icon"`
 }
 
 type pagerdutyConfig struct {
-	// Pagerduty auth token
+	// AuthToken used to authenticate with pagerduty
 	AuthToken string `yaml:"auth_token"`
 }
 

@@ -23,16 +23,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"regexp"
 	"strings"
 
 	"github.com/nlopes/slack"
 	"github.com/sapcc/stargate/pkg/util"
-)
-
-const (
-	//RegionRegex is the regions by which regions names are found
-	RegionRegex = `\S{2}\-\S{2}\-\d|staging|admin`
 )
 
 // Action ...
@@ -59,8 +53,8 @@ func (s *slackClient) HandleSlackCommand(r *http.Request) {
 	}
 
 	if slashCommand.Command == CommandCCloud {
-		action := getCommandAction(slashCommand.Text)
-		region := getCommandRegion(slashCommand.Text)
+		action := parseActionFromText(slashCommand.Text)
+		region := parseRegionFromText(slashCommand.Text)
 
 		if region == "" {
 			s.postMessageToChannel(
@@ -88,26 +82,12 @@ func (s *slackClient) HandleSlackCommand(r *http.Request) {
 				msg = fmt.Sprintf("Hey <@%s>, Relax! :green_heart:\nThere are no critical or warning alerts in %s.", slashCommand.UserID, region)
 			} else {
 				msg = fmt.Sprintf("Hey <@%s>, region %s shows:\n\n", slashCommand.UserID, region)
-				msg += util.PrintableExtendedAlertsBySeverity(alertsBySeverity)
+				msg += util.PrintableAlertDetails(alertsBySeverity)
 			}
 
 			s.postMessageToChannel(slashCommand.ChannelID, msg, "")
 		}
 	}
-}
-
-func getCommandRegion(cmdText string) string {
-	r := regexp.MustCompile(RegionRegex)
-	return r.FindString(strings.ToLower(cmdText))
-}
-
-func getCommandAction(cmdText string) string {
-	for cmd, keywords := range commandActions {
-		if textContainsAllKeyWords(cmdText, keywords) {
-			return cmd
-		}
-	}
-	return ""
 }
 
 func textContainsAllKeyWords(text string, keywords []string) bool {

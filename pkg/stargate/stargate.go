@@ -53,7 +53,7 @@ func NewStargate(opts config.Options) *Stargate {
 
 	v1API := api.NewAPI(cfg)
 
-	// the v1 endpoint that accepts slack message actions
+	// the v1 endpoint that accepts slack message action events
 	v1API.AddRouteV1(http.MethodPost, "/slack/event", sg.HandleSlackMessageActionEvent)
 
 	// the v1 endpoint that accepts slack commands
@@ -67,7 +67,10 @@ func NewStargate(opts config.Options) *Stargate {
 func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.Request) {
 	log.Println("received slack message")
 	w.WriteHeader(http.StatusNoContent)
-	r.ParseForm()
+	if err := r.ParseForm(); err != nil {
+		log.Printf("failed to parse request from: %v", err)
+		return
+	}
 	var payloadString string
 	for k, v := range r.Form {
 		if k == "payload" && len(v) == 1 {
@@ -90,6 +93,7 @@ func (s *Stargate) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
 
 // Run starts the stargate
 func (s *Stargate) Run() {
+	s.slack.RunRTM()
 	err := s.v1API.Serve()
 	if err != nil {
 		log.Fatal(err)

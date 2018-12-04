@@ -22,10 +22,12 @@ package util
 import (
 	"fmt"
 
-	"github.com/prometheus/alertmanager/client"
-	"github.com/prometheus/common/model"
 	"log"
 	"time"
+
+	"github.com/prometheus/alertmanager/client"
+	"github.com/prometheus/common/model"
+	"github.com/sapcc/stargate/pkg/alertmanager"
 )
 
 // AlertSeverity ...
@@ -41,25 +43,25 @@ var AlertSeverity = struct {
 
 // GetRegionFromAlert extracts the region label from an alert
 func GetRegionFromAlert(alert *model.Alert) (string, error) {
-	return findLabelValueInAlert(alert, "region")
+	return findLabelValueInAlert(alert, alertmanager.RegionLabel)
 }
 
 // GetSeverityFromAlert extract the severity label from an alert
 func GetSeverityFromAlert(alert *model.Alert) (string, error) {
-	return findLabelValueInAlert(alert, "severity")
+	return findLabelValueInAlert(alert, alertmanager.SeverityLabel)
 }
 
 // GetSeverityFromExtendedAlert extract the severity label from an alert
 func GetSeverityFromExtendedAlert(alert *client.ExtendedAlert) (string, error) {
 	for ln, labelValue := range alert.Labels {
-		if string(ln) == "severity" {
+		if string(ln) == alertmanager.SeverityLabel {
 			return string(labelValue), nil
 		}
 	}
 	return "", fmt.Errorf("label 'severity' not found in alert '%v'", alert)
 }
 
-// MapExtendedAlertsBySeverity ...
+// MapExtendedAlertsBySeverity maps alerts to their severity for easier lookup
 func MapExtendedAlertsBySeverity(alertList []*client.ExtendedAlert) (map[string][]*client.ExtendedAlert, error) {
 	var alertsFilteredBySeverity = map[string][]*client.ExtendedAlert{}
 	for _, alert := range alertList {
@@ -79,34 +81,61 @@ func MapExtendedAlertsBySeverity(alertList []*client.ExtendedAlert) (map[string]
 	return alertsFilteredBySeverity, nil
 }
 
-// PrintableExtendedAlertsBySeverity returns a printable version of the alerts
-func PrintableExtendedAlertsBySeverity(alertsBySeverity map[string][]*client.ExtendedAlert) string {
-	var msg string
-	criticalAlerts, ok := alertsBySeverity[AlertSeverity.Critical]
-	if ok {
-		msg += fmt.Sprintf("*%v %s alerts*\n", len(criticalAlerts), AlertSeverity.Critical)
-		for _, alert := range criticalAlerts {
-			alertname, ok := alert.Labels[model.AlertNameLabel]
+// PrintableAlertSummary ...
+func PrintableAlertSummary(alertsBySeverity map[string][]*client.ExtendedAlert) string {
+	var region string
+	for _, alertList := range alertsBySeverity {
+		for _, alert := range alertList {
+			r, ok := alert.Labels[alertmanager.RegionLabel]
 			if ok {
-				firingSince := time.Now().UTC().Sub(alert.StartsAt)
-				msg += fmt.Sprintf("  - %s is firing since %v. <%s|Graph>\n", alertname, HumanizedDurationString(firingSince), alert.GeneratorURL)
+				region = string(r)
 			}
 		}
 	}
 
-	warningAlerts, ok := alertsBySeverity[AlertSeverity.Warning]
-	if ok {
-		msg += fmt.Sprintf("*%v %s alerts*\n", len(warningAlerts), AlertSeverity.Warning)
-		for _, alert := range warningAlerts {
-			alertname, ok := alert.Labels[model.AlertNameLabel]
-			if ok {
-				firingSince := time.Now().UTC().Sub(alert.StartsAt)
-				msg += fmt.Sprintf("  - %s is firing since %v. <%s|Graph>\n", alertname, HumanizedDurationString(firingSince), alert.GeneratorURL)
-			}
+	summaryString := fmt.Sprintf("Region %s shows:\n", region)
+	for severity, alerts := range alertsBySeverity {
+		if len(alerts) > 0 {
+			summaryString += fmt.Sprintf("• %d %s alerts. Acknowledged: %d. \n", len(alerts), severity, CountAcknowledgedAlerts(alerts))
+		}
+	}
+	return summaryString
+}
+
+// PrintableAlertDetails ...
+func PrintableAlertDetails(alertsBySeverity map[string][]*client.ExtendedAlert) string {
+	detailsString := fmt.Sprintf(
+		"\n| %-30s| %-80s| %-10s| %-20s| %-15s| %-10s| %-30s|\n", "Alertname", "Meta", "Region", "Service", "Firing since", "Severity", "Acknowledged",
+	)
+
+	for _, alertList := range alertsBySeverity {
+		for _, alert := range alertList {
+			detailsString += fmt.Sprintf(
+				"| %-30s| %-80s| %-10s| %-20s| %-15s| %-10s| %-30s|\n",
+				alert.Labels[model.AlertNameLabel],
+				alert.Labels["meta"],
+				alert.Labels[alertmanager.RegionLabel],
+				alert.Labels["service"],
+				HumanizedDurationString(time.Now().UTC().Sub(alert.StartsAt.UTC())),
+				alert.Labels[alertmanager.SeverityLabel],
+				alert.Labels[alertmanager.AcknowledgedByLabel],
+			)
 		}
 	}
 
-	return msg
+	return detailsString
+}
+
+// CountAcknowledgedAlerts ...
+func CountAcknowledgedAlerts(alertList []*client.ExtendedAlert) int {
+	var count int
+	for _, alert := range alertList {
+		_, ok := alert.Labels[alertmanager.AcknowledgedByLabel]
+		if ok {
+			count++
+		}
+	}
+	return count
 }
 
 // IsNoCriticalOrWarningAlerts checks whether critical or warning alerts exist

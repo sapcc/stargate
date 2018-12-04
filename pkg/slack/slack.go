@@ -42,6 +42,7 @@ type slackClient struct {
 	authorizedUserIDs []string
 
 	slackClient        *slack.Client
+	slackRTMClient     *slack.RTM
 	alertmanagerClient alertmanager.Alertmanager
 	pagerdutyClient    *pagerduty.Client
 }
@@ -55,6 +56,7 @@ func NewSlackClient(config config.Config, isDebug bool) Receiver {
 		config:             config,
 		alertmanagerClient: alertmanager.New(config),
 		slackClient:        s,
+		slackRTMClient:     NewSlackRTM(config),
 		pagerdutyClient:    pagerduty.NewClient(config),
 	}
 
@@ -63,6 +65,12 @@ func NewSlackClient(config config.Config, isDebug bool) Receiver {
 	}
 
 	return slackClient
+}
+
+// Run starts the slack RTM client
+func (s *slackClient) RunRTM() {
+	go s.slackRTMClient.ManageConnection()
+	go s.HandleRTMEvent()
 }
 
 // acknowledgeAlert acknowledges an alert

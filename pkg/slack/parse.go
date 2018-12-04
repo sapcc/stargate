@@ -31,6 +31,9 @@ const (
 
 	// AlertnameRemainderRegex finds the alertname from the remainder of the alert text
 	AlertnameRemainderRegex = `(.+\/#\/alerts.+\||\s)?(?P<alertname>.+)(\>\*)?`
+
+	//RegionRegex is the regions by which regions names are found
+	RegionRegex = `\S{2}\-\S{2}\-\d|staging|admin`
 )
 
 func parseAlertFromSlackMessageText(text string) (map[string]string, error) {
@@ -65,4 +68,18 @@ func parseAlertFromSlackMessageText(text string) (map[string]string, error) {
 	}
 
 	return matchMap, nil
+}
+
+func parseRegionFromText(text string) string {
+	r := regexp.MustCompile(RegionRegex)
+	return r.FindString(strings.ToLower(text))
+}
+
+func parseActionFromText(text string) string {
+	for cmd, keywords := range commandActions {
+		if textContainsAllKeyWords(text, keywords) {
+			return cmd
+		}
+	}
+	return ""
 }

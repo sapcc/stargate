@@ -34,8 +34,16 @@ import (
 	"github.com/sapcc/stargate/pkg/config"
 )
 
-// LabelNameAcknowledgedBy ...
-const LabelNameAcknowledgedBy = "acknowledgedBy"
+const (
+	// AcknowledgedByLabel ...
+	AcknowledgedByLabel = "acknowledgedBy"
+
+	// RegionLabel ...
+	RegionLabel = "region"
+
+	// SeverityLabel ...
+	SeverityLabel = "severity"
+)
 
 type alertmanagerClient struct {
 	Alertmanager
@@ -126,11 +134,11 @@ func (a *alertmanagerClient) AcknowledgeAlert(alert *model.Alert, acknowledgedBy
 	}
 
 	for idx, a := range alertList {
-		ack, ok := a.Labels[LabelNameAcknowledgedBy]
+		ack, ok := a.Labels[AcknowledgedByLabel]
 		if ok && !strings.Contains(string(ack), acknowledgedBy) {
 			acknowledgedBy = fmt.Sprintf("%s, %s", ack, acknowledgedBy)
 		}
-		alertList[idx].Labels[LabelNameAcknowledgedBy] = client.LabelValue(acknowledgedBy)
+		alertList[idx].Labels[AcknowledgedByLabel] = client.LabelValue(acknowledgedBy)
 	}
 
 	return a.alertAPIClient.Push(
