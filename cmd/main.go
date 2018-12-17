@@ -53,7 +53,7 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 
-	go stargate.NewStargate(opts).Run(stop)
+	go stargate.NewStargate(opts).Run(wg, stop)
 
 	<-sigs // Wait for signals (this hangs until a signal arrives)
 	log.Println("Shutting down...")

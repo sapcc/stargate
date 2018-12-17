@@ -28,6 +28,7 @@ import (
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/slack"
 	"time"
+	"sync"
 )
 
 // Stargate ...
@@ -93,7 +94,10 @@ func (s *Stargate) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
 }
 
 // Run starts the stargate
-func (s *Stargate) Run(stopCh <-chan struct{}) {
+func (s *Stargate) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
+	defer wg.Done()
+	wg.Add(1)
+
 	if !s.Config.SlackConfig.IsDisableRTM {
 		s.slack.RunRTM()
 	}
