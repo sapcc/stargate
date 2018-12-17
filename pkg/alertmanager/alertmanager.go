@@ -46,7 +46,6 @@ const (
 )
 
 type alertmanagerClient struct {
-	Alertmanager
 	Config config.Config
 
 	silenceAPIClient client.SilenceAPI

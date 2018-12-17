@@ -21,12 +21,13 @@ package pagerduty
 
 import (
 	"fmt"
+	"log"
+	"time"
+
 	"github.com/PagerDuty/go-pagerduty"
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/util"
-	"log"
-	"time"
 )
 
 // StatusAcknowledged ...
@@ -37,7 +38,7 @@ const (
 
 // Client ...
 type Client struct {
-	config config.Config
+	config          config.Config
 	pagerdutyClient *pagerduty.Client
 }
 
@@ -48,7 +49,7 @@ func NewClient(config config.Config) *Client {
 		log.Fatalln("unable to create pagerduty client")
 	}
 	return &Client{
-		config: config,
+		config:          config,
 		pagerdutyClient: client,
 	}
 }
