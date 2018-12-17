@@ -14,12 +14,10 @@ notifications:
 before_script:
   - sudo apt-get update
   - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce
-  - curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-  - dep ensure
   - go get -u golang.org/x/lint/golint
 
 script:
-  - make tests build
+  - GO111MODULE=on make tests build
 
 after_success:
   - >
