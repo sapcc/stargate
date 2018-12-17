@@ -4,16 +4,23 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/nlopes/slack"
 	"github.com/nlopes/slack/slackevents"
+	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/util"
-  "github.com/sapcc/stargate/pkg/config"
-  "github.com/nlopes/slack"
 )
 
 // NewSlackRTM ...
-func NewSlackRTM(config config.Config) *slack.RTM {
-  client := slack.New(config.SlackConfig.AccessToken)
-  return client.NewRTM()
+func NewSlackRTM(config config.Config, opts config.Options) *slack.RTM {
+	client := slack.New(config.SlackConfig.AccessToken)
+	client.SetDebug(opts.IsDebug)
+	return client.NewRTM()
+}
+
+// Run starts the slack RTM client
+func (s *slackClient) RunRTM() {
+	go s.slackRTMClient.ManageConnection()
+	go s.HandleRTMEvent()
 }
 
 func (s *slackClient) HandleRTMEvent() {
@@ -60,6 +67,5 @@ func (s *slackClient) HandleRTMEvent() {
 		default:
 			log.Printf("ignoring event type %v %v %v", msg.Type, msg.Data, event)
 		}
-
 	}
 }

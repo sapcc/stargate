@@ -23,7 +23,6 @@ import (
 	"flag"
 	"log"
 	"os"
-
 	"os/signal"
 	"sync"
 	"syscall"
@@ -36,7 +35,6 @@ import (
 var opts config.Options
 
 func init() {
-	pflag.StringVar(&opts.AlertmanagerURL, "alertmanager-url", "", "URL of the Prometheus Alertmanager")
 	pflag.StringVar(&opts.ExternalURL, "external-url", "", "External URL")
 	pflag.IntVar(&opts.ListenPort, "port", 8080, "API port")
 	pflag.StringVar(&opts.ConfigFilePath, "config-file", "/etc/stargate/config/stargate.yaml", "Path to the file containing the config")
@@ -55,7 +53,7 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 
-	go stargate.NewStargate(opts).Run()
+	go stargate.NewStargate(opts).Run(stop)
 
 	<-sigs // Wait for signals (this hangs until a signal arrives)
 	log.Println("Shutting down...")

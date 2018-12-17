@@ -11,9 +11,12 @@ metadata:
 
 data:
   stargate.yaml: |
+    alertmanager:
+      url: {{ required "missing alertmanager url" .Values.alertmanager.url }}
     pagerduty:
       auth_token: {{ .Values.pagerduty.auth_token | quote }}
     slack:
+      disable_rtm: {{ default false .Values.slack.disable_rtm }}
       user_name: {{ .Values.slack.user_name | quote }}
       {{- if .Values.slack.user_icon }}
       user_icon: {{ .Values.slack.user_icon | quote }}
@@ -27,6 +30,9 @@ data:
       access_token: {{ required "missing slack.access_token" .Values.slack.access_token | quote }}
       {{- if .Values.slack.bot_user_access_token }}
       bot_user_access_token: {{ .Values.slack.bot_user_access_token | quote }}
+      {{- end }}
+      {{- if .Values.slack.command }}
+      command: {{ .Values.slack.command | quote }}
       {{- end }}
       authorized_groups:
 {{ toYaml .Values.slack.authorized_groups | indent 8 }}

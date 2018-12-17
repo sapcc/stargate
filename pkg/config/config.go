@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"time"
 
 	"gopkg.in/yaml.v2"
 )
@@ -64,6 +65,15 @@ type slackConfig struct {
 
 	// UserIcon for slack messages
 	UserIcon string `yaml:"user_icon"`
+
+	// Command to trigger actions
+	Command string `yaml:"command"`
+
+	// RecheckInterval for user group memberships
+	RecheckInterval time.Duration `yaml:"recheck_interval"`
+
+	// IsDisableRTM allows disabeling the slack RTM (real time messaging)
+	IsDisableRTM bool `yaml:"disable_rtm"`
 }
 
 type pagerdutyConfig struct {
@@ -93,9 +103,6 @@ func NewConfig(opts Options) (cfg Config, err error) {
 	if opts.ListenPort != 0 {
 		cfg.ListenPort = opts.ListenPort
 	}
-	if opts.AlertmanagerURL != "" {
-		cfg.AlertManager.URL = opts.AlertmanagerURL
-	}
 
 	cfg.SlackConfig.validate()
 
@@ -113,6 +120,14 @@ func (s slackConfig) validate() {
 
 	if s.UserName == "" {
 		s.UserName = "Stargate"
+	}
+
+	if s.Command == "" {
+		s.Command = "/stargate"
+	}
+
+	if s.RecheckInterval == 0 {
+		s.RecheckInterval = 30 * time.Minute
 	}
 }
 

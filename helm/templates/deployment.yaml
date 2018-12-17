@@ -29,7 +29,6 @@ spec:
           args:
             - stargate
             - --port={{ default 8080 .Values.port }}
-            - --alertmanager-url={{ required "missing alertmanager url" .Values.alertmanager.url }}
             - --config-file=/etc/stargate/config/{{ include "stargate.fullname" . }}.yaml
             - --debug={{ .Values.debugEnabled }}
             {{- if .Values.externalURL }}

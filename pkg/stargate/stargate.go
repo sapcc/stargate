@@ -27,6 +27,7 @@ import (
 	"github.com/sapcc/stargate/pkg/api"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/slack"
+	"time"
 )
 
 // Stargate ...
@@ -48,7 +49,7 @@ func NewStargate(opts config.Options) *Stargate {
 
 	sg := &Stargate{
 		Config: cfg,
-		slack:  slack.NewSlackClient(cfg, opts.IsDebug),
+		slack:  slack.NewSlackClient(cfg, opts),
 	}
 
 	v1API := api.NewAPI(cfg)
@@ -92,10 +93,29 @@ func (s *Stargate) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
 }
 
 // Run starts the stargate
-func (s *Stargate) Run() {
-	s.slack.RunRTM()
+func (s *Stargate) Run(stopCh <-chan struct{}) {
+	if !s.Config.SlackConfig.IsDisableRTM {
+		s.slack.RunRTM()
+	}
+
 	err := s.v1API.Serve()
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	ticker := time.NewTicker(s.Config.SlackConfig.RecheckInterval)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				if err := s.slack.GetAuthorizedSlackUserGroupMembers(); err != nil {
+					log.Printf("error getting authorized slack user groups: %v", err)
+				}
+			case <-stopCh:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+	<-stopCh
 }

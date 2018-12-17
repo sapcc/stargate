@@ -21,24 +21,11 @@ package slack
 
 import (
 	"fmt"
-	"log"
-	"net/http"
-	"strings"
-
 	"github.com/nlopes/slack"
 	"github.com/sapcc/stargate/pkg/util"
+	"log"
+	"net/http"
 )
-
-// Action ...
-var Action = struct {
-	ShowAlerts string
-}{
-	"showAlerts",
-}
-
-var commandActions = map[string][]string{
-	Action.ShowAlerts: {"show", "alerts"},
-}
 
 // HandleSlackCommand responds to slack commands
 func (s *slackClient) HandleSlackCommand(r *http.Request) {
@@ -52,7 +39,7 @@ func (s *slackClient) HandleSlackCommand(r *http.Request) {
 		return
 	}
 
-	if slashCommand.Command == CommandCCloud {
+	if slashCommand.Command == s.config.SlackConfig.Command {
 		action := parseActionFromText(slashCommand.Text)
 		region := parseRegionFromText(slashCommand.Text)
 
@@ -88,13 +75,4 @@ func (s *slackClient) HandleSlackCommand(r *http.Request) {
 			s.postMessageToChannel(slashCommand.ChannelID, msg, "")
 		}
 	}
-}
-
-func textContainsAllKeyWords(text string, keywords []string) bool {
-	for _, k := range keywords {
-		if !strings.Contains(text, k) {
-			return false
-		}
-	}
-	return true
 }

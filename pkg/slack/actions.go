@@ -17,14 +17,27 @@
 *
 *******************************************************************************/
 
-package config
+package slack
 
-// Options passed via cmd line
-type Options struct {
-	ListenPort  int
-	ExternalURL string
+import "strings"
 
-	ConfigFilePath string
+// Action struct for available actions that can be triggered
+var Action = struct {
+	ShowAlerts string
+}{
+	"showAlerts",
+}
 
-	IsDebug bool
+// commandActions mapping of action to keywords (commands)
+var commandActions = map[string][]string{
+	Action.ShowAlerts: {"show", "alerts"},
+}
+
+func textContainsAllKeyWords(text string, keywords []string) bool {
+	for _, k := range keywords {
+		if !strings.Contains(text, k) {
+			return false
+		}
+	}
+	return true
 }

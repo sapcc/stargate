@@ -11,6 +11,8 @@ port: 8080
 # whether debug is enabled
 debugEnabled: false
 
+disable-slack-rtm: false
+
 # Slack configuration
 slack:
   # username for slack messages
@@ -33,6 +35,10 @@ slack:
   # List of slack user groups whose members are authorized to silence alerts, create tickets, etc.
   # authorized_groups:
   #   - admin
+
+  # Slack command to trigger actions
+  # default: /stargate
+  # command:
 
 # Prometheus Alertmanager configuration
 alertmanager:

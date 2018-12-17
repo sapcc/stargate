@@ -45,8 +45,15 @@ func (s *slackClient) HandleSlackMessageActionEvent(payload string) {
 		log.Printf("failed to unmarshal request body: %v", err)
 		return
 	}
+
+	var userName string
+	userName, err = s.slackUserIDToName(slackMessageAction.User.Id)
+	if err != nil {
+		log.Printf("failed to get user name for id '%s'", slackMessageAction.User.Id)
+	}
+
 	if !s.isUserAuthorized(slackMessageAction.User.Id) {
-		log.Printf("user with ID '%s' is not authorized to respond to a message", slackMessageAction.User.Id)
+		log.Printf("user with ID '%s' (%s) is not authorized to respond to a message", slackMessageAction.User.Id, userName)
 		return
 	}
 
@@ -66,23 +73,23 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 
 		switch action.Value {
 
-		case reactionTypes.Acknowledge:
+		case Reaction.Acknowledge:
 			if err := s.acknowledgeAlert(messageAction); err != nil {
 				log.Printf("failed to acknowledge: %v", err)
 			}
 
-		case reactionTypes.SilenceUntilMonday:
+		case Reaction.SilenceUntilMonday:
 			durationDays := util.TimeUntilNextMonday(time.Now().UTC())
 			if err := s.silenceAlert(messageAction, util.DaysToHours(durationDays)); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
 
-		case reactionTypes.Silence1Day:
+		case Reaction.Silence1Day:
 			if err := s.silenceAlert(messageAction, util.DaysToHours(1)); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}
 
-		case reactionTypes.Silence1Month:
+		case Reaction.Silence1Month:
 			if err := s.silenceAlert(messageAction, util.DaysToHours(31)); err != nil {
 				log.Printf("error creating silence: %v", err)
 			}

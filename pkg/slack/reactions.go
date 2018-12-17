@@ -17,14 +17,17 @@
 *
 *******************************************************************************/
 
-package config
+package slack
 
-// Options passed via cmd line
-type Options struct {
-	ListenPort  int
-	ExternalURL string
-
-	ConfigFilePath string
-
-	IsDebug bool
+// Reaction must match the slack action.Value
+var Reaction = struct {
+	Acknowledge,
+	SilenceUntilMonday,
+	Silence1Month,
+	Silence1Day string
+}{
+	"acknowledge",
+	"silenceUntilMonday",
+	"silence1Month",
+	"silence1Day",
 }

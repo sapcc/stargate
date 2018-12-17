@@ -37,6 +37,7 @@ const (
 
 // Client ...
 type Client struct {
+	config config.Config
 	pagerdutyClient *pagerduty.Client
 }
 
@@ -46,12 +47,19 @@ func NewClient(config config.Config) *Client {
 	if client == nil {
 		log.Fatalln("unable to create pagerduty client")
 	}
-	return &Client{client}
+	return &Client{
+		config: config,
+		pagerdutyClient: client,
+	}
 }
 
 // AcknowledgeIncident acknowledges a currently firing incident
-func (p *Client) AcknowledgeIncident(alert *model.Alert, userName string) error {
-	incident, err := p.findIncident(alert)
+func (p *Client) AcknowledgeIncident(alert *model.Alert, userEmail string) error {
+	if userEmail == "" {
+		return fmt.Errorf("cannot acknowledge alert '%s' without a mail address", alert.Name())
+	}
+
+	incident, err := p.findIncidentByAlert(alert)
 	if err != nil {
 		return err
 	}
@@ -60,11 +68,11 @@ func (p *Client) AcknowledgeIncident(alert *model.Alert, userName string) error 
 		At: time.Now().UTC().String(),
 	})
 	incident.Status = StatusAcknowledged
-	return p.pagerdutyClient.ManageIncidents(userName, []pagerduty.Incident{*incident})
+	return p.pagerdutyClient.ManageIncidents(userEmail, []pagerduty.Incident{*incident})
 }
 
 // findIncident finds triggered incidents in pagerduty by alertname, region
-func (p *Client) findIncident(alert *model.Alert) (*pagerduty.Incident, error) {
+func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, error) {
 	regionName, err := util.GetRegionFromAlert(alert)
 	if err != nil {
 		return nil, err

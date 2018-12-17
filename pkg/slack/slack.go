@@ -48,29 +48,27 @@ type slackClient struct {
 }
 
 // NewSlackClient returns a new receiver
-func NewSlackClient(config config.Config, isDebug bool) Receiver {
+func NewSlackClient(config config.Config, opts config.Options) Receiver {
 	s := slack.New(config.SlackConfig.AccessToken)
-	s.SetDebug(isDebug)
+	s.SetDebug(opts.IsDebug)
 
 	slackClient := &slackClient{
 		config:             config,
 		alertmanagerClient: alertmanager.New(config),
 		slackClient:        s,
-		slackRTMClient:     NewSlackRTM(config),
 		pagerdutyClient:    pagerduty.NewClient(config),
 	}
 
-	if err := slackClient.getAuthorizedSlackUserGroupMembers(); err != nil {
+	if !config.SlackConfig.IsDisableRTM {
+		slackClient.slackRTMClient = NewSlackRTM(config, opts)
+	}
+
+	// get the list initially. refresh every slack.recheck_interval
+	if err := slackClient.GetAuthorizedSlackUserGroupMembers(); err != nil {
 		log.Fatalf("failed to get authorized slack users: %v", err)
 	}
 
 	return slackClient
-}
-
-// Run starts the slack RTM client
-func (s *slackClient) RunRTM() {
-	go s.slackRTMClient.ManageConnection()
-	go s.HandleRTMEvent()
 }
 
 // acknowledgeAlert acknowledges an alert
@@ -92,8 +90,14 @@ func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) 
 		log.Printf("failed to acknowledge in alertmanager: %v", err)
 	}
 
+	// get user mail address. req. for pagerduty acknowledgements
+	userEMail, err := s.getUserEmail(messageAction.User.Id)
+	if err != nil {
+		log.Printf("failed to get user email address: %v", err)
+	}
+
 	// acknowledge alert in pagerduty
-	if err := s.pagerdutyClient.AcknowledgeIncident(alert, userName); err != nil {
+	if err := s.pagerdutyClient.AcknowledgeIncident(alert, userEMail); err != nil {
 		log.Printf("failed to acknowledge in pagerduty: %v", err)
 	}
 
@@ -185,12 +189,7 @@ func isErrorInvalidToken(err error) bool {
 	return false
 }
 
-func (s *slackClient) getAuthorizedSlackUserGroupMembers() error {
-	log.Printf(
-		"authorizing members of slack users groups: %v",
-		strings.Join(s.config.SlackConfig.AuthorizedGroups, ", "),
-	)
-
+func (s *slackClient) GetAuthorizedSlackUserGroupMembers() error {
 	userGroupIDs, err := s.userGroupNamesToIDs(s.config.SlackConfig.AuthorizedGroups)
 	if err != nil {
 		return err
@@ -210,6 +209,11 @@ func (s *slackClient) getAuthorizedSlackUserGroupMembers() error {
 		return errors.New("not a single user is authorized to respond to slack messages. check `authorized_groups` in config")
 	}
 
+	log.Printf(
+		"authorizing members of slack users groups: %v",
+		strings.Join(s.config.SlackConfig.AuthorizedGroups, ", "),
+	)
+
 	s.authorizedUserIDs = authorizedUserIDs
 	return nil
 }
@@ -218,7 +222,6 @@ func (s *slackClient) getAuthorizedSlackUserGroupMembers() error {
 // userGroupNamesToIDs finds the ID based on the name of a slack user group
 func (s *slackClient) userGroupNamesToIDs(userGroupNames []string) ([]string, error) {
 	userGroupIDs := make([]string, 0)
-
 	userGroups, err := s.slackClient.GetUserGroups()
 	if err != nil {
 		return userGroupIDs, err
@@ -255,6 +258,19 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 	}
 
 	return name, nil
+}
+
+func (s *slackClient) getUserEmail(userID string) (string, error) {
+	user, err := s.slackClient.GetUserInfo(userID)
+	if err != nil {
+		return "", err
+	}
+
+	email := user.Profile.Email
+	if email == "" {
+		fmt.Errorf("user '%s' didn't maintain an email address", user.Name)
+	}
+	return email, nil
 }
 
 func (s *slackClient) postMessageToChannel(channel, message, threadTimestamp string) error {

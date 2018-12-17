@@ -27,4 +27,5 @@ type Receiver interface {
 
 	HandleSlackMessageActionEvent(payload string)
 	HandleSlackCommand(r *http.Request)
+	GetAuthorizedSlackUserGroupMembers() error
 }
