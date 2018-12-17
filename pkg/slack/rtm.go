@@ -12,7 +12,7 @@ import (
 
 // NewSlackRTM ...
 func NewSlackRTM(config config.Config, opts config.Options) *slack.RTM {
-	client := slack.New(config.SlackConfig.AccessToken)
+	client := slack.New(config.SlackConfig.BotUserAccessToken)
 	client.SetDebug(opts.IsDebug)
 	return client.NewRTM()
 }
