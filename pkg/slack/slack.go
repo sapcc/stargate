@@ -296,7 +296,7 @@ func (s *slackClient) postMessageToChannel(channel, message, threadTimestamp str
 }
 
 func (s *slackClient) addReactionToMessage(channel, timestamp, reaction string) {
-	log.Printf("adding reaction '%s' to message with channel '%s', timestamp '%s", reaction, channel, timestamp)
+	log.Printf("adding reaction '%s' to message with channel '%s', timestamp '%s'", reaction, channel, timestamp)
 	msgRef := slack.NewRefToMessage(channel, timestamp)
 	if err := s.slackClient.AddReaction(reaction, msgRef); err != nil {
 		log.Printf("error adding reaction to message: %v", err)
