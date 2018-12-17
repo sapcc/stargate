@@ -46,13 +46,13 @@ The stargate requires the following slack scopes:
 - reactions:write
 - chat:write:bot
 - chat:write:user
+- rtm:stream
 ```
 
 ## Installation & Usage
 
 ```
 Usage of the stargate:
-      --alertmanager-url string     URL of the Prometheus Alertmanager
       --config-file string                 Path to the file containing the config (default "/etc/stargate/config/stargate.yaml")
       --debug                                   Enable debug configuration and log level
       --external-url string              External URL
