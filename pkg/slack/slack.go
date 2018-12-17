@@ -261,14 +261,14 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 }
 
 func (s *slackClient) getUserEmail(userID string) (string, error) {
-	user, err := s.slackClient.GetUserInfo(userID)
+	userProfile, err := s.slackClient.GetUserProfile(userID, false)
 	if err != nil {
 		return "", err
 	}
 
-	email := user.Profile.Email
+	email := userProfile.Email
 	if email == "" {
-		fmt.Errorf("user '%s' didn't maintain an email address", user.Name)
+		fmt.Errorf("user '%s' didn't maintain an email address", userProfile.RealName)
 	}
 	return email, nil
 }
