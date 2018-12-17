@@ -19,6 +19,8 @@
 
 package api
 
+import "strings"
+
 // Info ...
 type Info struct {
 	Versions []version `json:"versions"`
@@ -46,10 +48,17 @@ func NewAPIInfo(url string) *Info {
 				Links: []link{
 					{
 						Rel:  "self",
-						Href: url,
+						Href: ensurePrefixURL(url),
 					},
 				},
 			},
 		},
 	}
+}
+
+func ensurePrefixURL(url string) string {
+	if !strings.HasPrefix(url, "https://") {
+		return "https://" + url
+	}
+	return url
 }
