@@ -243,7 +243,7 @@ func (s *slackClient) isUserAuthorized(userID string) bool {
 func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 	user, err := s.slackClient.GetUserInfo(userID)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "failed to get slack info for user with id '%s'", userID)
 	}
 
 	var name string
@@ -263,7 +263,7 @@ func (s *slackClient) slackUserIDToName(userID string) (string, error) {
 func (s *slackClient) getUserEmail(userID string) (string, error) {
 	userProfile, err := s.slackClient.GetUserProfile(userID, false)
 	if err != nil {
-		return "", err
+		return "", errors.Wrapf(err, "failed to get slack profile for user with id '%s'", userID)
 	}
 
 	email := userProfile.Email
