@@ -52,7 +52,7 @@ type slackConfig struct {
 	AccessToken string `yaml:"access_token"`
 
 	// BotUserAccessToken is the access token used by the bot
-	BotUserAccessToken string `yaml:"bot_user_acces_token"`
+	BotUserAccessToken string `yaml:"bot_user_access_token"`
 
 	// SigningSecret to verify slack messages
 	SigningSecret string `yaml:"signing_secret"`
