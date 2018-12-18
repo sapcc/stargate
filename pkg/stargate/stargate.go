@@ -37,8 +37,8 @@ type Stargate struct {
 
 	alertmanagerClient alertmanager.Alertmanager
 	slack              slack.Receiver
-
-	Config config.Config
+	opts               config.Options
+	Config             config.Config
 }
 
 // New creates a new stargate
@@ -51,6 +51,7 @@ func New(opts config.Options) *Stargate {
 	sg := &Stargate{
 		Config: cfg,
 		slack:  slack.NewSlackClient(cfg, opts),
+		opts:   opts,
 	}
 
 	v1API := api.NewAPI(cfg)
@@ -98,16 +99,20 @@ func (s *Stargate) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
 	defer wg.Done()
 	wg.Add(1)
 
+	ticker := time.NewTicker(s.Config.Slack.RecheckInterval)
+
 	if !s.Config.Slack.IsDisableRTM {
 		s.slack.RunRTM()
 	}
 
-	err := s.v1API.Serve()
-	if err != nil {
-		log.Fatal(err)
-	}
+	// start API
+	go func() {
+		if err := s.v1API.Serve(); err != nil {
+			log.Fatalf("Stargate API failed with %v", err)
+		}
+	}()
 
-	ticker := time.NewTicker(s.Config.Slack.RecheckInterval)
+	// check whether members of authorized slack user groups have changed
 	go func() {
 		for {
 			select {

@@ -111,7 +111,7 @@ func NewConfig(opts Options) (cfg Config, err error) {
 	return cfg, nil
 }
 
-func (s slackConfig) validate() {
+func (s *slackConfig) validate() {
 	if s.SigningSecret == "" && s.VerificationToken == "" {
 		log.Fatal("incomplete messenger configuration: either messenger `signing_secret` or `verification_token` needs to be provided so messenger messenger can be verified")
 	}
