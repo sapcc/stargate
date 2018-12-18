@@ -16,7 +16,6 @@ data:
     pagerduty:
       auth_token: {{ .Values.pagerduty.auth_token | quote }}
     slack:
-      disable_rtm: {{ default false .Values.slack.disable_rtm }}
       user_name: {{ .Values.slack.user_name | quote }}
       {{- if .Values.slack.user_icon }}
       user_icon: {{ .Values.slack.user_icon | quote }}

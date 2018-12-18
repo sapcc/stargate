@@ -11,7 +11,8 @@ port: 8080
 # whether debug is enabled
 debugEnabled: false
 
-disable-slack-rtm: false
+# whether the slack RTM (Real Time Messaging aka the Bot) should be disabled
+disableSlackRTM: true
 
 # Slack configuration
 slack:
