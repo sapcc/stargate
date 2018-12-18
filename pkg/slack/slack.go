@@ -49,7 +49,7 @@ type slackClient struct {
 
 // NewSlackClient returns a new receiver
 func NewSlackClient(config config.Config, opts config.Options) Receiver {
-	s := slack.New(config.SlackConfig.AccessToken)
+	s := slack.New(config.Slack.AccessToken)
 	s.SetDebug(opts.IsDebug)
 
 	slackClient := &slackClient{
@@ -59,7 +59,7 @@ func NewSlackClient(config config.Config, opts config.Options) Receiver {
 		pagerdutyClient:    pagerduty.NewClient(config),
 	}
 
-	if !config.SlackConfig.IsDisableRTM {
+	if !config.Slack.IsDisableRTM {
 		slackClient.slackRTMClient = NewSlackRTM(config, opts)
 	}
 
@@ -82,7 +82,7 @@ func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) 
 	userName, err := s.slackUserIDToName(messageAction.User.Id)
 	if err != nil {
 		log.Printf("error finding slack user by id: %v", err)
-		userName = s.config.SlackConfig.UserName
+		userName = s.config.Slack.UserName
 	}
 
 	// acknowledge alert in the alertmanager
@@ -124,7 +124,7 @@ func (s *slackClient) silenceAlert(messageAction slackevents.MessageAction, dura
 	userName, err := s.slackUserIDToName(messageAction.User.Id)
 	if err != nil {
 		log.Printf("error finding slack user by id: %v", err)
-		userName = s.config.SlackConfig.UserName
+		userName = s.config.Slack.UserName
 	}
 
 	silenceID, err := s.alertmanagerClient.CreateSilence(
@@ -190,7 +190,7 @@ func isErrorInvalidToken(err error) bool {
 }
 
 func (s *slackClient) GetAuthorizedSlackUserGroupMembers() error {
-	userGroupIDs, err := s.userGroupNamesToIDs(s.config.SlackConfig.AuthorizedGroups)
+	userGroupIDs, err := s.userGroupNamesToIDs(s.config.Slack.AuthorizedGroups)
 	if err != nil {
 		return err
 	}
@@ -211,7 +211,7 @@ func (s *slackClient) GetAuthorizedSlackUserGroupMembers() error {
 
 	log.Printf(
 		"authorizing members of slack users groups: %v",
-		strings.Join(s.config.SlackConfig.AuthorizedGroups, ", "),
+		strings.Join(s.config.Slack.AuthorizedGroups, ", "),
 	)
 
 	s.authorizedUserIDs = authorizedUserIDs
@@ -275,11 +275,11 @@ func (s *slackClient) getUserEmail(userID string) (string, error) {
 
 func (s *slackClient) postMessageToChannel(channel, message, threadTimestamp string) error {
 	postMessageParameters := slack.PostMessageParameters{
-		Username:  s.config.SlackConfig.UserName,
+		Username:  s.config.Slack.UserName,
 		LinkNames: 1,
 	}
-	if s.config.SlackConfig.UserIcon != "" {
-		postMessageParameters.IconEmoji = s.config.SlackConfig.UserIcon
+	if s.config.Slack.UserIcon != "" {
+		postMessageParameters.IconEmoji = s.config.Slack.UserIcon
 	}
 
 	// respond to another message in an existing thread or create one

@@ -26,5 +26,6 @@ type Options struct {
 
 	ConfigFilePath string
 
-	IsDebug bool
+	IsDebug           bool
+	IsDisableSlackRTM bool
 }

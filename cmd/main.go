@@ -39,6 +39,7 @@ func init() {
 	pflag.IntVar(&opts.ListenPort, "port", 8080, "API port")
 	pflag.StringVar(&opts.ConfigFilePath, "config-file", "/etc/stargate/config/stargate.yaml", "Path to the file containing the config")
 	pflag.BoolVar(&opts.IsDebug, "debug", false, "Enable debug configuration and log level")
+	pflag.BoolVar(&opts.IsDisableSlackRTM, "disable-slack-rtm", false, "Disable Slack RTM (the bot)")
 }
 
 func main() {
@@ -53,7 +54,7 @@ func main() {
 
 	wg := &sync.WaitGroup{}
 
-	go stargate.NewStargate(opts).Run(wg, stop)
+	go stargate.New(opts).Run(wg, stop)
 
 	<-sigs // Wait for signals (this hangs until a signal arrives)
 	log.Println("Shutting down...")

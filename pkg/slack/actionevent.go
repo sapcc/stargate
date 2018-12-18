@@ -35,7 +35,7 @@ func (s *slackClient) HandleSlackMessageActionEvent(payload string) {
 
 	slackMessageAction, err := slackevents.ParseActionEvent(
 		payload,
-		slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: s.config.SlackConfig.GetValidationToken()}),
+		slackevents.OptionVerifyToken(&slackevents.TokenComparator{VerificationToken: s.config.Slack.GetValidationToken()}),
 	)
 	if err != nil {
 		if isErrorInvalidToken(err) {

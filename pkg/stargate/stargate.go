@@ -22,13 +22,13 @@ package stargate
 import (
 	"log"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/api"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/slack"
-	"time"
-	"sync"
 )
 
 // Stargate ...
@@ -41,11 +41,11 @@ type Stargate struct {
 	Config config.Config
 }
 
-// NewStargate creates a new stargate
-func NewStargate(opts config.Options) *Stargate {
+// New creates a new stargate
+func New(opts config.Options) *Stargate {
 	cfg, err := config.NewConfig(opts)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to load configuration: %v", err)
 	}
 
 	sg := &Stargate{
@@ -98,7 +98,7 @@ func (s *Stargate) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
 	defer wg.Done()
 	wg.Add(1)
 
-	if !s.Config.SlackConfig.IsDisableRTM {
+	if !s.Config.Slack.IsDisableRTM {
 		s.slack.RunRTM()
 	}
 
@@ -107,7 +107,7 @@ func (s *Stargate) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
 		log.Fatal(err)
 	}
 
-	ticker := time.NewTicker(s.Config.SlackConfig.RecheckInterval)
+	ticker := time.NewTicker(s.Config.Slack.RecheckInterval)
 	go func() {
 		for {
 			select {

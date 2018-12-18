@@ -30,9 +30,9 @@ import (
 
 // Config ...
 type Config struct {
-	AlertManager    alertmanagerConfig `yaml:"alertmanager"`
-	SlackConfig     slackConfig        `yaml:"slack"`
-	PagerdutyConfig pagerdutyConfig    `yaml:"pagerduty"`
+	AlertManager alertmanagerConfig `yaml:"alertmanager"`
+	Slack        slackConfig        `yaml:"slack"`
+	Pagerduty    pagerdutyConfig    `yaml:"pagerduty"`
 
 	ListenPort  int
 	ExternalURL string
@@ -73,7 +73,7 @@ type slackConfig struct {
 	RecheckInterval time.Duration `yaml:"recheck_interval"`
 
 	// IsDisableRTM allows disabeling the slack RTM (real time messaging)
-	IsDisableRTM bool `yaml:"disable_rtm"`
+	IsDisableRTM bool `yaml:"-"`
 }
 
 type pagerdutyConfig struct {
@@ -103,8 +103,10 @@ func NewConfig(opts Options) (cfg Config, err error) {
 	if opts.ListenPort != 0 {
 		cfg.ListenPort = opts.ListenPort
 	}
+	cfg.Slack.IsDisableRTM = opts.IsDisableSlackRTM
 
-	cfg.SlackConfig.validate()
+	cfg.Slack.validate()
+	cfg.AlertManager.validate()
 
 	return cfg, nil
 }
@@ -128,6 +130,12 @@ func (s slackConfig) validate() {
 
 	if s.RecheckInterval == 0 {
 		s.RecheckInterval = 30 * time.Minute
+	}
+}
+
+func (a *alertmanagerConfig) validate() {
+	if a.URL == "" {
+		log.Fatalf("missing `alertmanager.url` in config")
 	}
 }
 

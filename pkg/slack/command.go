@@ -34,12 +34,12 @@ func (s *slackClient) HandleSlackCommand(r *http.Request) {
 		log.Print(err)
 	}
 
-	if !slashCommand.ValidateToken(s.config.SlackConfig.GetValidationToken()) {
+	if !slashCommand.ValidateToken(s.config.Slack.GetValidationToken()) {
 		log.Printf("not authorized to perform command '%s'", slashCommand.Command)
 		return
 	}
 
-	if slashCommand.Command == s.config.SlackConfig.Command {
+	if slashCommand.Command == s.config.Slack.Command {
 		action := parseActionFromText(slashCommand.Text)
 		region := parseRegionFromText(slashCommand.Text)
 
