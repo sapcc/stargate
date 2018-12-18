@@ -25,7 +25,6 @@ func (s *slackClient) RunRTM() {
 
 func (s *slackClient) HandleRTMEvent() {
 	for msg := range s.slackRTMClient.IncomingEvents {
-		fmt.Println("rtm event received")
 		switch event := msg.Data.(type) {
 
 		// respond if the app was mentioned
@@ -63,9 +62,6 @@ func (s *slackClient) HandleRTMEvent() {
 
 		case *slackevents.MessageEvent:
 			log.Printf("received message event: %v", event)
-
-		default:
-			log.Printf("ignoring event type %v %v %v", msg.Type, msg.Data, event)
 		}
 	}
 }
