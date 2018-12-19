@@ -121,7 +121,7 @@ func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, e
 }
 
 func (p *Client) findUserIDByEmail(userEmail string) (string, error) {
-	userList, err := p.pagerdutyClient.ListUsers(pagerduty.ListUsersOptions{Query: userEmail})
+	userList, err := p.pagerdutyClient.ListUsers(pagerduty.ListUsersOptions{})
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to list pagerduty users")
 	}
@@ -132,5 +132,5 @@ func (p *Client) findUserIDByEmail(userEmail string) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("no pagerduty user with name '%s' found", userEmail)
+	return "", fmt.Errorf("no pagerduty user with email '%s' found", userEmail)
 }

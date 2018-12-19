@@ -105,16 +105,14 @@ func PrintableAlertSummary(alertsBySeverity map[string][]*client.ExtendedAlert) 
 // PrintableAlertDetails ...
 func PrintableAlertDetails(alertsBySeverity map[string][]*client.ExtendedAlert) string {
 	detailsString := fmt.Sprintf(
-		"\n| %-30s| %-80s| %-10s| %-20s| %-15s| %-10s| %-30s|\n", "Alertname", "Meta", "Region", "Service", "Firing since", "Severity", "Acknowledged",
+		"\n| %-30s| %-20s| %-15s| %-10s| %-30s|\n", "Alertname", "Service", "Firing since", "Severity", "Acknowledged",
 	)
 
 	for _, alertList := range alertsBySeverity {
 		for _, alert := range alertList {
 			detailsString += fmt.Sprintf(
-				"| %-30s| %-80s| %-10s| %-20s| %-15s| %-10s| %-30s|\n",
+				"| %-30s| %-20s| %-15s| %-10s| %-30s|\n",
 				alert.Labels[model.AlertNameLabel],
-				alert.Labels["meta"],
-				alert.Labels[alertmanager.RegionLabel],
 				alert.Labels["service"],
 				HumanizedDurationString(time.Now().UTC().Sub(alert.StartsAt.UTC())),
 				alert.Labels[alertmanager.SeverityLabel],

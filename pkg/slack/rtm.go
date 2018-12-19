@@ -19,6 +19,7 @@ func NewSlackRTM(config config.Config, opts config.Options) *slack.RTM {
 
 // Run starts the slack RTM client
 func (s *slackClient) RunRTM() {
+	log.Println("starting slack real time messaging")
 	go s.slackRTMClient.ManageConnection()
 	go s.HandleRTMEvent()
 }
@@ -62,6 +63,9 @@ func (s *slackClient) HandleRTMEvent() {
 
 		case *slackevents.MessageEvent:
 			log.Printf("received message event: %v", event)
+
+		case *slackevents.MessageAction:
+			log.Printf("message action event: %v", event)
 		}
 	}
 }
