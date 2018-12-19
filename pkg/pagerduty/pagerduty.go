@@ -72,19 +72,11 @@ func (p *Client) AcknowledgeIncident(alert *model.Alert, userEmail string) error
 		return err
 	}
 
-	timeNowUTCString := time.Now().UTC().String()
-	incident.Acknowledgements = append(incident.Acknowledgements, pagerduty.Acknowledgement{
-		At: timeNowUTCString,
-	})
-	incident.Assignments = append(incident.Assignments, pagerduty.Assignment{
-		At: timeNowUTCString,
-		Assignee: pagerduty.APIObject{
-			Type: TypeUserReference,
-			ID:   userID,
+	return p.pagerdutyClient.ManageIncidents(
+		userEmail,
+		[]pagerduty.Incident{acknowledgeIncident(incident, userID),
 		},
-	})
-	incident.Status = StatusAcknowledged
-	return p.pagerdutyClient.ManageIncidents(userEmail, []pagerduty.Incident{*incident})
+	)
 }
 
 // findIncident finds triggered incidents in pagerduty by alertname, region
@@ -133,4 +125,26 @@ func (p *Client) findUserIDByEmail(userEmail string) (string, error) {
 	}
 
 	return "", fmt.Errorf("no pagerduty user with email '%s' found", userEmail)
+}
+
+func acknowledgeIncident(incident *pagerduty.Incident, userID string) pagerduty.Incident {
+	timeNowUTCString := time.Now().UTC().String()
+	ackedIncident := *incident
+
+	ackedIncident.Acknowledgements = append(ackedIncident.Acknowledgements, pagerduty.Acknowledgement{
+		At: timeNowUTCString,
+		Acknowledger: pagerduty.APIObject{
+			Type: TypeUserReference,
+			ID:   userID,
+		},
+	})
+	ackedIncident.Assignments = append(ackedIncident.Assignments, pagerduty.Assignment{
+		At: timeNowUTCString,
+		Assignee: pagerduty.APIObject{
+			Type: TypeUserReference,
+			ID:   userID,
+		},
+	})
+	ackedIncident.Status = StatusAcknowledged
+	return ackedIncident
 }
