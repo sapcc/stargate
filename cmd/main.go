@@ -26,9 +26,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/log/level"
 	"github.com/sapcc/stargate/pkg/config"
+	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/stargate"
 	"github.com/spf13/pflag"
 )
@@ -51,14 +50,14 @@ func main() {
 	stop := make(chan struct{})
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
-	logger := log.NewLogfmtLogger(os.Stdout)
+	logger := log.NewLogger()
 
 	wg := &sync.WaitGroup{}
 
 	go stargate.New(opts).Run(wg, stop)
 
 	<-sigs // Wait for signals (this hangs until a signal arrives)
-	level.Info(logger).Log("shutting down...")
+	logger.LogInfo("shutting down...")
 
 	close(stop) // Tell goroutines to stop themselves
 	wg.Wait()   // Wait for all to be stopped

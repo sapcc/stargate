@@ -33,26 +33,28 @@ func NewLoggerWith(logger Logger, keyvals ...interface{}) Logger {
 
 // LogInfo logs info messages
 func (l *Logger) LogInfo(msg string, keyvals ...interface{}) {
-	level.Info(l.logger).Log("msg", msg, keyvals)
+	level.Info(l.logger).Log(append([]interface{}{"msg", msg}, keyvals...)...)
 }
 
 // LogDebug logs debug messages
 func (l *Logger) LogDebug(msg string, keyvals ...interface{}) {
-	level.Debug(l.logger).Log("msg", msg, keyvals)
+	level.Debug(l.logger).Log(append([]interface{}{"msg", msg}, keyvals...)...)
 }
 
 // LogError logs error messages
 func (l *Logger) LogError(msg string, err error, keyvals ...interface{}) {
-	level.Error(l.logger).Log("msg", msg, "err", err, keyvals)
+	// prepend message and append err
+	keyvals = append([]interface{}{"msg", msg}, keyvals...)
+	level.Error(l.logger).Log(append(keyvals, []interface{}{"err", err})...)
 }
 
 // LogWarn logs warning messages
 func (l *Logger) LogWarn(msg string, keyvals ...interface{}) {
-	level.Warn(l.logger).Log("msg", msg, keyvals)
+	level.Warn(l.logger).Log(append([]interface{}{"msg", msg}, keyvals...)...)
 }
 
 // LogFatal logs fatal messages and exits
 func (l *Logger) LogFatal(msg string, keyvals ...interface{}) {
-	level.Error(l.logger).Log("msg", msg, keyvals)
+	level.Error(l.logger).Log(append([]interface{}{"msg", msg}, keyvals...)...)
 	os.Exit(1)
 }
