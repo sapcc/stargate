@@ -20,7 +20,6 @@
 package stargate
 
 import (
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -28,33 +27,38 @@ import (
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/api"
 	"github.com/sapcc/stargate/pkg/config"
+	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/slack"
 )
 
 // Stargate ...
 type Stargate struct {
-	v1API *api.API
-
+	v1API              *api.API
+	logger             log.Logger
 	alertmanagerClient alertmanager.Alertmanager
 	slack              slack.Receiver
 	opts               config.Options
-	Config             config.Config
+
+	Config config.Config
 }
 
 // New creates a new stargate
 func New(opts config.Options) *Stargate {
-	cfg, err := config.NewConfig(opts)
+	logger := log.NewLogger()
+
+	cfg, err := config.NewConfig(opts, logger)
 	if err != nil {
-		log.Fatalf("failed to load configuration: %v", err)
+		logger.LogFatal("failed to load configuration", "err", err)
 	}
 
 	sg := &Stargate{
 		Config: cfg,
-		slack:  slack.NewSlackClient(cfg, opts),
+		slack:  slack.NewSlackClient(cfg, opts, logger),
 		opts:   opts,
+		logger: logger,
 	}
 
-	v1API := api.NewAPI(cfg)
+	v1API := api.NewAPI(cfg, logger)
 
 	// the v1 endpoint that accepts slack message action events
 	v1API.AddRouteV1(http.MethodPost, "/slack/event", sg.HandleSlackMessageActionEvent)
@@ -68,10 +72,10 @@ func New(opts config.Options) *Stargate {
 
 // HandleSlackMessageActionEvent handles slack message action events
 func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.Request) {
-	log.Println("received slack message")
+	s.logger.LogDebug("received slack message action event")
 	w.WriteHeader(http.StatusNoContent)
 	if err := r.ParseForm(); err != nil {
-		log.Printf("failed to parse request from: %v", err)
+		s.logger.LogError("failed to parse request", err)
 		return
 	}
 	var payloadString string
@@ -87,7 +91,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 
 // HandleSlackCommand handles slack commands
 func (s *Stargate) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
-	log.Println("received slack command")
+	s.logger.LogDebug("received slack command")
 	w.WriteHeader(http.StatusNoContent)
 	r.ParseForm()
 
@@ -108,7 +112,7 @@ func (s *Stargate) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
 	// start API
 	go func() {
 		if err := s.v1API.Serve(); err != nil {
-			log.Fatalf("Stargate API failed with %v", err)
+			s.logger.LogFatal("stargate API failed with", "err", err)
 		}
 	}()
 
@@ -118,7 +122,7 @@ func (s *Stargate) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
 			select {
 			case <-ticker.C:
 				if err := s.slack.GetAuthorizedSlackUserGroupMembers(); err != nil {
-					log.Printf("error getting authorized slack user groups: %v", err)
+					s.logger.LogError("error getting authorized slack user groups", err)
 				}
 			case <-stopCh:
 				ticker.Stop()

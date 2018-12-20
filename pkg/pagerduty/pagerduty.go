@@ -21,13 +21,13 @@ package pagerduty
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/PagerDuty/go-pagerduty"
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/config"
+	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/util"
 )
 
@@ -40,17 +40,21 @@ const (
 
 // Client ...
 type Client struct {
+	logger          log.Logger
 	config          config.Config
 	pagerdutyClient *pagerduty.Client
 }
 
 // NewClient creates a new pagerduty client
-func NewClient(config config.Config) *Client {
+func NewClient(config config.Config, logger log.Logger) *Client {
+	logger = log.NewLoggerWith(logger, "component", "pagerduty")
+
 	client := pagerduty.NewClient(config.Pagerduty.AuthToken)
 	if client == nil {
-		log.Fatalln("unable to create pagerduty client")
+		logger.LogFatal("unable to create pagerduty client")
 	}
 	return &Client{
+		logger:          logger,
 		config:          config,
 		pagerdutyClient: client,
 	}
@@ -74,8 +78,7 @@ func (p *Client) AcknowledgeIncident(alert *model.Alert, userEmail string) error
 
 	return p.pagerdutyClient.ManageIncidents(
 		userEmail,
-		[]pagerduty.Incident{acknowledgeIncident(incident, userID),
-		},
+		[]pagerduty.Incident{acknowledgeIncident(incident, userID)},
 	)
 }
 
@@ -96,13 +99,16 @@ func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, e
 	for _, incident := range incidentList.Incidents {
 		matchMap, err := parseRegionAndAlertnameFromPagerdutySummary(incident.APIObject.Summary)
 		if err != nil {
-			log.Printf("pagerduty incident summary '%s' does not contain a region and/or alertname", incident.APIObject.Summary)
+			p.logger.LogError("incident parsing failed", err)
 			continue
 		}
 		foundAlertname, nameOK := matchMap["alertname"]
 		foundRegion, regionOK := matchMap["region"]
 		if !nameOK || !regionOK {
-			log.Printf("pagerduty incident summary '%s' does not contain a region and/or alertname", incident.APIObject.Summary)
+			p.logger.LogError(
+				"incident parsing failed",
+				errors.New("pagerduty incident summary does not contain a region and/or alertname"),
+			)
 			continue
 		}
 		if foundAlertname == alert.Name() && foundRegion == regionName {

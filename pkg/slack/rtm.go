@@ -2,8 +2,6 @@ package slack
 
 import (
 	"fmt"
-	"log"
-
 	"github.com/nlopes/slack"
 	"github.com/nlopes/slack/slackevents"
 	"github.com/sapcc/stargate/pkg/config"
@@ -19,7 +17,7 @@ func NewSlackRTM(config config.Config, opts config.Options) *slack.RTM {
 
 // Run starts the slack RTM client
 func (s *slackClient) RunRTM() {
-	log.Println("starting slack real time messaging")
+	s.logger.LogInfo("starting slack real time messaging")
 	go s.slackRTMClient.ManageConnection()
 	go s.HandleRTMEvent()
 }
@@ -30,7 +28,7 @@ func (s *slackClient) HandleRTMEvent() {
 
 		// respond if the app was mentioned
 		case *slackevents.AppMentionEvent:
-			log.Println("app was mentioned. responding")
+			s.logger.LogDebug("app was mentioned. responding")
 
 			region := parseRegionFromText(event.Text)
 			action := parseActionFromText(event.Text)
@@ -39,12 +37,12 @@ func (s *slackClient) HandleRTMEvent() {
 			case Action.ShowAlerts:
 				alertList, err := s.alertmanagerClient.ListAlerts(map[string]string{"region": region})
 				if err != nil {
-					log.Printf("error listing alerts in region %s: %v", region, err)
+					s.logger.LogError("error listing alerts", err, "region", region)
 				}
 
 				alertsBySeverity, err := util.MapExtendedAlertsBySeverity(alertList)
 				if err != nil {
-					log.Println(err)
+					s.logger.LogError("error mapping alerts by severity", err)
 					return
 				}
 
@@ -59,13 +57,13 @@ func (s *slackClient) HandleRTMEvent() {
 				s.postMessageToChannel(event.Channel, msg, "")
 			}
 
-			log.Printf("user: %s, channel: %s, text: %s", event.User, event.Channel, event.Text)
+			s.logger.LogDebug("responding to action", "user", event.User, "channel", event.Channel, "text", event.Text)
 
 		case *slackevents.MessageEvent:
-			log.Printf("received message event: %v", event)
+			s.logger.LogDebug("received message event")
 
 		case *slackevents.MessageAction:
-			log.Printf("message action event: %v", event)
+			s.logger.LogDebug("received message action")
 		}
 	}
 }

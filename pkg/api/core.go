@@ -22,21 +22,24 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/sapcc/stargate/pkg/config"
+	"github.com/sapcc/stargate/pkg/log"
 )
 
 // API is the Stargate API struct
 type API struct {
 	*mux.Router
+	logger log.Logger
+
 	Config config.Config
 }
 
 // NewAPI creates a new API based on the configuration
-func NewAPI(config config.Config) *API {
+func NewAPI(config config.Config, logger log.Logger) *API {
+	logger = log.NewLoggerWith(logger, "component", "api")
 
 	router := mux.NewRouter().StrictSlash(false)
 
@@ -48,6 +51,7 @@ func NewAPI(config config.Config) *API {
 
 	return &API{
 		router,
+		logger,
 		config,
 	}
 }
@@ -60,6 +64,6 @@ func (a *API) AddRouteV1(method, path string, handleFunc func(w http.ResponseWri
 // Serve starts the stargate API
 func (a *API) Serve() error {
 	host := fmt.Sprintf("0.0.0.0:%d", a.Config.ListenPort)
-	log.Printf("starting server on %s", host)
+	a.logger.LogInfo("starting api", "host", host)
 	return http.ListenAndServe(host, a)
 }

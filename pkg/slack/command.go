@@ -21,21 +21,21 @@ package slack
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/nlopes/slack"
 	"github.com/sapcc/stargate/pkg/util"
-	"log"
-	"net/http"
 )
 
 // HandleSlackCommand responds to slack commands
 func (s *slackClient) HandleSlackCommand(r *http.Request) {
 	slashCommand, err := slack.SlashCommandParse(r)
 	if err != nil {
-		log.Print(err)
+		s.logger.LogError("failed to parse slash command", err)
 	}
 
 	if !slashCommand.ValidateToken(s.config.Slack.GetValidationToken()) {
-		log.Printf("not authorized to perform command '%s'", slashCommand.Command)
+		s.logger.LogInfo("failed to validate token for slash command")
 		return
 	}
 
@@ -55,12 +55,12 @@ func (s *slackClient) HandleSlackCommand(r *http.Request) {
 		case Action.ShowAlerts:
 			alertList, err := s.alertmanagerClient.ListAlerts(map[string]string{"region": region})
 			if err != nil {
-				log.Printf("error listing alerts in region %s: %v", region, err)
+				s.logger.LogError("error listing alerts in region", err, "region", region)
 			}
 
 			alertsBySeverity, err := util.MapExtendedAlertsBySeverity(alertList)
 			if err != nil {
-				log.Println(err)
+				s.logger.LogError("", err)
 				return
 			}
 

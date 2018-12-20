@@ -21,12 +21,13 @@ package main
 
 import (
 	"flag"
-	"log"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
+	"github.com/go-kit/kit/log"
+	"github.com/go-kit/kit/log/level"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/stargate"
 	"github.com/spf13/pflag"
@@ -43,8 +44,6 @@ func init() {
 }
 
 func main() {
-	log.SetOutput(os.Stdout)
-
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
 
@@ -52,12 +51,14 @@ func main() {
 	stop := make(chan struct{})
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
+	logger := log.NewLogfmtLogger(os.Stdout)
+
 	wg := &sync.WaitGroup{}
 
 	go stargate.New(opts).Run(wg, stop)
 
 	<-sigs // Wait for signals (this hangs until a signal arrives)
-	log.Println("Shutting down...")
+	level.Info(logger).Log("shutting down...")
 
 	close(stop) // Tell goroutines to stop themselves
 	wg.Wait()   // Wait for all to be stopped

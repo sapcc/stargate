@@ -22,7 +22,6 @@ package alertmanager
 import (
 	"context"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -32,6 +31,7 @@ import (
 	"github.com/prometheus/client_golang/api"
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/config"
+	"github.com/sapcc/stargate/pkg/log"
 )
 
 const (
@@ -48,19 +48,23 @@ const (
 type alertmanagerClient struct {
 	Config config.Config
 
+	logger           log.Logger
 	silenceAPIClient client.SilenceAPI
 	alertAPIClient   client.AlertAPI
 }
 
 // New creates a new Alertmanager
-func New(config config.Config) Alertmanager {
+func New(config config.Config, logger log.Logger) Alertmanager {
+	logger = log.NewLoggerWith(logger, "component", "alertmanager")
+
 	apiClient, err := api.NewClient(api.Config{Address: config.AlertManager.URL})
 	if err != nil {
-		log.Fatalf("failed to create alertmanager api client using url '%s': %v", config.AlertManager.URL, err)
+		logger.LogFatal("failed to create alertmanager api client", "alertmanagerURL", config.AlertManager.URL, "err", err)
 	}
 
 	return &alertmanagerClient{
 		Config:           config,
+		logger:           logger,
 		silenceAPIClient: client.NewSilenceAPI(apiClient),
 		alertAPIClient:   client.NewAlertAPI(apiClient),
 	}
@@ -77,7 +81,11 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, silenceAuthor, si
 		return "", errors.New("author must not be empty")
 	}
 
-	log.Printf("creating silence for alert: %v, duration: %v, author: %s", alert.Labels, silenceDuration, silenceAuthor)
+	a.logger.LogInfo("creating silence",
+		"alertLabels", alert.Labels.String(),
+		"silenceDuration", silenceDuration,
+		"silenceAuthor", silenceAuthor,
+	)
 
 	now := time.Now().UTC()
 	silenceMatchers := matchersFromAlert(alert)
@@ -87,7 +95,7 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, silenceAuthor, si
 		return "", err
 	}
 	if isExists {
-		log.Printf("silence with matchers %v already exists. not creating again", silenceMatchers)
+		a.logger.LogInfo("silence already exists", "silenceMatchers", silenceMatchers)
 		return silenceID, err
 	}
 
@@ -103,7 +111,7 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, silenceAuthor, si
 	if err != nil {
 		return "", err
 	}
-	log.Printf("created silence with ID '%s'", silenceID)
+	a.logger.LogInfo("created silence", "silenceID", silenceID)
 
 	return silenceID, nil
 }

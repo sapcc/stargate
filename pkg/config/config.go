@@ -22,9 +22,10 @@ package config
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/sapcc/stargate/pkg/log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -82,10 +83,9 @@ type pagerdutyConfig struct {
 }
 
 // NewConfig reads the configuration from the given filePath
-func NewConfig(opts Options) (cfg Config, err error) {
+func NewConfig(opts Options, logger log.Logger) (cfg Config, err error) {
 	if opts.ConfigFilePath == "" {
-		log.Println("path to configuration file not provided")
-		return cfg, nil
+		return cfg, errors.New("path to configuration file not provided")
 	}
 
 	cfgBytes, err := ioutil.ReadFile(opts.ConfigFilePath)
@@ -105,19 +105,24 @@ func NewConfig(opts Options) (cfg Config, err error) {
 	}
 	cfg.Slack.IsDisableRTM = opts.IsDisableSlackRTM
 
-	cfg.Slack.validate()
-	cfg.AlertManager.validate()
+	if err := cfg.Slack.validate(); err != nil {
+		logger.LogFatal("invalid slack configuration", "err", err)
+	}
+
+	if err := cfg.AlertManager.validate(); err != nil {
+		logger.LogFatal("invalid alertmanager configuration", "err", err)
+	}
 
 	return cfg, nil
 }
 
-func (s *slackConfig) validate() {
+func (s *slackConfig) validate() error {
 	if s.SigningSecret == "" && s.VerificationToken == "" {
-		log.Fatal("incomplete messenger configuration: either messenger `signing_secret` or `verification_token` needs to be provided so messenger messenger can be verified")
+		return errors.New("incomplete messenger configuration: either messenger `signing_secret` or `verification_token` needs to be provided so messenger messenger can be verified")
 	}
 
 	if s.AccessToken == "" {
-		log.Fatal("incomplete messenger configuration: missing messenger `access_token`")
+		return errors.New("incomplete messenger configuration: missing messenger `access_token`")
 	}
 
 	if s.UserName == "" {
@@ -129,14 +134,18 @@ func (s *slackConfig) validate() {
 	}
 
 	if s.RecheckInterval == 0 {
-		s.RecheckInterval = 30 * time.Minute
+		s.RecheckInterval = 1 * time.Hour
 	}
+
+	return nil
 }
 
-func (a *alertmanagerConfig) validate() {
+func (a *alertmanagerConfig) validate() error {
 	if a.URL == "" {
-		log.Fatalf("missing `alertmanager.url` in config")
+		return errors.New("missing `alertmanager.url` in config")
 	}
+
+	return nil
 }
 
 // GetValidationToken returns either the signingSecret or verificationToken in order to validate slack messenger

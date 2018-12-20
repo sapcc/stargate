@@ -20,7 +20,6 @@
 package slack
 
 import (
-	"log"
 	"time"
 
 	"github.com/nlopes/slack/slackevents"
@@ -29,7 +28,7 @@ import (
 
 func (s *slackClient) HandleSlackMessageActionEvent(payload string) {
 	if payload == "" {
-		log.Printf("empty paylod. request does not contain a slack message action event")
+		s.logger.LogDebug("empty paylod. request does not contain a slack message action event")
 		return
 	}
 
@@ -39,26 +38,29 @@ func (s *slackClient) HandleSlackMessageActionEvent(payload string) {
 	)
 	if err != nil {
 		if isErrorInvalidToken(err) {
-			log.Printf("failed to verify slack message: %v", err)
+			s.logger.LogError("failed to verify slack message", err)
 			return
 		}
-		log.Printf("failed to unmarshal request body: %v", err)
+		s.logger.LogError("failed to unmarshal request body", err)
 		return
 	}
 
 	var userName string
 	userName, err = s.slackUserIDToName(slackMessageAction.User.Id)
 	if err != nil {
-		log.Printf("failed to get user name for id '%s'", slackMessageAction.User.Id)
+		s.logger.LogError("user not found by id", err, "userID", slackMessageAction.User.Id)
 	}
 
 	if !s.isUserAuthorized(slackMessageAction.User.Id) {
-		log.Printf("user with ID '%s' (%s) is not authorized to respond to a message", slackMessageAction.User.Id, userName)
+		s.logger.LogInfo("user is not authorized to respond to a message",
+			"userID", slackMessageAction.User.Id,
+			"userName", userName,
+		)
 		return
 	}
 
 	if err := s.checkAction(slackMessageAction); err != nil {
-		log.Printf("failed to respond to slack message: %v", err)
+		s.logger.LogError("failed to respond to slack message", err)
 	}
 }
 
@@ -67,7 +69,11 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 	for _, action := range messageAction.Actions {
 		// only react to buttons clicks
 		if action.Name != ActionName || action.Type != ActionType {
-			log.Printf("ignoring action with name '%s', type '%s', value '%s'", action.Name, action.Type, action.Value)
+			s.logger.LogDebug("ignoring action",
+				"actionName", action.Name,
+				"actionType", action.Type,
+				"actionValue", action.Value,
+			)
 			continue
 		}
 
@@ -75,27 +81,27 @@ func (s *slackClient) checkAction(messageAction slackevents.MessageAction) error
 
 		case Reaction.Acknowledge:
 			if err := s.acknowledgeAlert(messageAction); err != nil {
-				log.Printf("failed to acknowledge: %v", err)
+				s.logger.LogError("failed to acknowledge alert", err)
 			}
 
 		case Reaction.SilenceUntilMonday:
 			durationDays := util.TimeUntilNextMonday(time.Now().UTC())
 			if err := s.silenceAlert(messageAction, util.DaysToHours(durationDays)); err != nil {
-				log.Printf("error creating silence: %v", err)
+				s.logger.LogError("error creating silence", err)
 			}
 
 		case Reaction.Silence1Day:
 			if err := s.silenceAlert(messageAction, util.DaysToHours(1)); err != nil {
-				log.Printf("error creating silence: %v", err)
+				s.logger.LogError("error creating silence", err)
 			}
 
 		case Reaction.Silence1Month:
 			if err := s.silenceAlert(messageAction, util.DaysToHours(31)); err != nil {
-				log.Printf("error creating silence: %v", err)
+				s.logger.LogError("error creating silence", err)
 			}
 
 		default:
-			log.Printf("not responding to action '%s'", action.Value)
+			s.logger.LogDebug("not responding to action", "actionValue", action.Value)
 		}
 	}
 
