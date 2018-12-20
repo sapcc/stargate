@@ -27,7 +27,7 @@ func NewLogger() Logger {
 // NewLoggerWith return a new Logger with additional keyvals
 func NewLoggerWith(logger Logger, keyvals ...interface{}) Logger {
 	return Logger{
-		logger: log.With(logger.logger, keyvals),
+		logger: log.With(logger.logger, keyvals...),
 	}
 }
 
