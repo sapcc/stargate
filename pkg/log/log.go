@@ -45,7 +45,7 @@ func (l *Logger) LogDebug(msg string, keyvals ...interface{}) {
 func (l *Logger) LogError(msg string, err error, keyvals ...interface{}) {
 	// prepend message and append err
 	keyvals = append([]interface{}{"msg", msg}, keyvals...)
-	level.Error(l.logger).Log(append(keyvals, []interface{}{"err", err})...)
+	level.Error(l.logger).Log(append(keyvals, []interface{}{"err", err}...)...)
 }
 
 // LogWarn logs warning messages
