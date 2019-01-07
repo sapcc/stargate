@@ -38,6 +38,7 @@ func init() {
 	)
 }
 
+// MetricNamespace ...
 const MetricNamespace = "stargate"
 
 var (
