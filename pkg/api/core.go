@@ -25,8 +25,11 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
+	"github.com/sapcc/stargate/pkg/metrics"
 )
 
 // API is the Stargate API struct
@@ -41,24 +44,32 @@ type API struct {
 func NewAPI(config config.Config, logger log.Logger) *API {
 	logger = log.NewLoggerWith(logger, "component", "api")
 
-	router := mux.NewRouter().StrictSlash(false)
+	api := &API{
+		mux.NewRouter().StrictSlash(false),
+		logger,
+		config,
+	}
 
-	router.Methods(http.MethodGet).Path("/").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	api.addRoute("", http.MethodGet, "/", func(w http.ResponseWriter, r *http.Request) {
 		if err := json.NewEncoder(w).Encode(NewAPIInfo(config.ExternalURL)); err != nil {
 			json.NewEncoder(w).Encode(Error{Code: 500, Message: err.Error()})
 		}
 	})
 
-	return &API{
-		router,
-		logger,
-		config,
-	}
+	return api
 }
 
 // AddRouteV1 adds a new route to the v1 API
 func (a *API) AddRouteV1(method, path string, handleFunc func(w http.ResponseWriter, r *http.Request)) {
-	a.PathPrefix("/v1").Methods(method).Path(path).HandlerFunc(handleFunc)
+	a.addRoute("/v1", method, path, handleFunc)
+}
+
+func (a *API) addRoute(pathPrefix, method, path string, handleFunc func(w http.ResponseWriter, r *http.Request)) {
+	a.PathPrefix(pathPrefix).Methods(method).Path(path).HandlerFunc(
+		promhttp.InstrumentHandlerCounter(
+			metrics.HTTPRequestsTotal.MustCurryWith(prometheus.Labels{"method": method, "handler": pathPrefix + path}),
+			http.HandlerFunc(handleFunc)),
+	)
 }
 
 // Serve starts the stargate API

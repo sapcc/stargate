@@ -8,6 +8,9 @@ metadata:
     chart: {{ include "stargate.chart" . }}
     release: {{ .Release.Name }}
     heritage: {{ .Release.Service }}
+  annotations:
+    prometheus.io/port: {{ .Values.metricPort }}
+    prometheus.io/scrape: "true"
 
 spec:
   ports:

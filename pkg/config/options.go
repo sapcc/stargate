@@ -22,6 +22,7 @@ package config
 // Options passed via cmd line
 type Options struct {
 	ListenPort  int
+	MetricPort  int
 	ExternalURL string
 
 	ConfigFilePath string

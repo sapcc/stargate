@@ -8,6 +8,9 @@ image:
 # the port used to expose the stargate API
 port: 8080
 
+# the port to expose prometheus metrics on
+metricPort: 9090
+
 # whether debug is enabled
 debugEnabled: false
 

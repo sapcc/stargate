@@ -42,6 +42,3 @@ helm-values:
 
 clean:
 	rm -rf bin/*
-
-vendor:
-	dep ensure

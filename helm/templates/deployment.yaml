@@ -28,7 +28,8 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           args:
             - stargate
-            - --port={{ default 8080 .Values.port }}
+            - --port={{ .Values.port }}
+            - --metric-port={{ .Values.metricPort }}
             - --config-file=/etc/stargate/config/{{ include "stargate.fullname" . }}.yaml
             - --debug={{ .Values.debugEnabled }}
             - --disable-slack-rtm={{ .Values.disableSlackRTM }}
@@ -37,7 +38,10 @@ spec:
             {{- end }}
           ports:
             - name: http
-              containerPort: {{ default 8080 .Values.port }}
+              containerPort: {{ .Values.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: {{ .Values.metricPort }}
               protocol: TCP
           volumeMounts:
             - name: config

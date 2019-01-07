@@ -31,6 +31,7 @@ import (
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
+	"github.com/sapcc/stargate/pkg/metrics"
 	"github.com/sapcc/stargate/pkg/pagerduty"
 	"github.com/sapcc/stargate/pkg/util"
 )
@@ -92,6 +93,9 @@ func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) 
 	// acknowledge alert in the alertmanager
 	if err := s.alertmanagerClient.AcknowledgeAlert(alert, userName); err != nil {
 		s.logger.LogError("failed to acknowledge in alertmanager", err)
+		metrics.FailedOperationsTotal.WithLabelValues("alermanager", "acknowledge").Inc()
+	} else {
+		metrics.SuccessfulOperationsTotal.WithLabelValues("alertmanager", "acknowledge").Inc()
 	}
 
 	// get user mail address. req. for pagerduty acknowledgements
@@ -103,6 +107,9 @@ func (s *slackClient) acknowledgeAlert(messageAction slackevents.MessageAction) 
 	// acknowledge alert in pagerduty
 	if err := s.pagerdutyClient.AcknowledgeIncident(alert, userEMail); err != nil {
 		s.logger.LogError("failed to acknowledge in pagerduty", err)
+		metrics.FailedOperationsTotal.WithLabelValues("pagerduty", "acknowledge").Inc()
+	} else {
+		metrics.SuccessfulOperationsTotal.WithLabelValues("pagerduty", "acknowledge").Inc()
 	}
 
 	s.addReactionToMessage(
@@ -138,8 +145,10 @@ func (s *slackClient) silenceAlert(messageAction slackevents.MessageAction, dura
 		duration,
 	)
 	if err != nil {
+		metrics.FailedOperationsTotal.WithLabelValues("alertmanager", "silence").Inc()
 		return err
 	}
+	metrics.SuccessfulOperationsTotal.WithLabelValues("alertmanager", "silence").Inc()
 
 	// Confirm the silence was successfully created by posting to the channel
 	s.addReactionToMessage(messageAction.Channel.Id, messageAction.OriginalMessage.Timestamp, SilenceSuccessReactionEmoji)

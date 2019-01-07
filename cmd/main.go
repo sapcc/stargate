@@ -28,6 +28,7 @@ import (
 
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
+	"github.com/sapcc/stargate/pkg/metrics"
 	"github.com/sapcc/stargate/pkg/stargate"
 	"github.com/spf13/pflag"
 )
@@ -37,6 +38,7 @@ var opts config.Options
 func init() {
 	pflag.StringVar(&opts.ExternalURL, "external-url", "", "External URL")
 	pflag.IntVar(&opts.ListenPort, "port", 8080, "API port")
+	pflag.IntVar(&opts.MetricPort, "metric-port", 9090, "Metric port")
 	pflag.StringVar(&opts.ConfigFilePath, "config-file", "/etc/stargate/config/stargate.yaml", "Path to the file containing the config")
 	pflag.BoolVar(&opts.IsDebug, "debug", false, "Enable debug configuration and log level")
 	pflag.BoolVar(&opts.IsDisableSlackRTM, "disable-slack-rtm", false, "Disable Slack RTM (the bot)")
@@ -55,6 +57,7 @@ func main() {
 	wg := &sync.WaitGroup{}
 
 	go stargate.New(opts).Run(wg, stop)
+	go metrics.Serve(opts, logger)
 
 	<-sigs // Wait for signals (this hangs until a signal arrives)
 	logger.LogInfo("shutting down...")

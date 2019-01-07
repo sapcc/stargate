@@ -101,7 +101,7 @@ func (s *Stargate) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
 // Run starts the stargate
 func (s *Stargate) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
 	defer wg.Done()
-	wg.Add(1)
+	wg.Add(2)
 
 	ticker := time.NewTicker(s.Config.Slack.RecheckInterval)
 
