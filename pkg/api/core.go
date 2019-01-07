@@ -75,6 +75,6 @@ func (a *API) addRoute(pathPrefix, method, path string, handleFunc func(w http.R
 // Serve starts the stargate API
 func (a *API) Serve() error {
 	host := fmt.Sprintf("0.0.0.0:%d", a.Config.ListenPort)
-	a.logger.LogInfo("starting api", "host", host)
+	a.logger.LogInfo("starting api", "host", "0.0.0.0", "port", a.Config.ListenPort)
 	return http.ListenAndServe(host, a)
 }
