@@ -104,6 +104,7 @@ func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, e
 		}
 		foundAlertname, nameOK := matchMap["alertname"]
 		foundRegion, regionOK := matchMap["region"]
+		p.logger.LogDebug("found pagerduty incident", "name", foundAlertname, "region", foundRegion)
 		if !nameOK || !regionOK {
 			p.logger.LogError(
 				"incident parsing failed",
@@ -115,7 +116,7 @@ func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, e
 			return &incident, nil
 		}
 	}
-	return nil, fmt.Errorf("no incident found for alert: %v", alert)
+	return nil, fmt.Errorf("no incident found for alert name: '%s', region: '%s'", alert.Name(), regionName)
 }
 
 func (p *Client) findUserIDByEmail(userEmail string) (string, error) {
