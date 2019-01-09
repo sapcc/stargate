@@ -34,7 +34,6 @@ import (
 // StatusAcknowledged ...
 const (
 	StatusAcknowledged = "acknowledged"
-	StatusTriggered    = "triggered"
 	TypeUserReference  = "user_reference"
 )
 
@@ -79,8 +78,8 @@ func (p *Client) AcknowledgeIncident(alert *model.Alert, userEmail string) error
 	ackedIncident := acknowledgeIncident(incident, userID)
 	p.logger.LogDebug("acknowledged incident",
 		"assignments", ackedIncident.Assignments,
-			"acknowledgements", ackedIncident.Acknowledgements,
-			"status", ackedIncident.Status,
+		"acknowledgements", ackedIncident.Acknowledgements,
+		"status", ackedIncident.Status,
 	)
 
 	return p.pagerdutyClient.ManageIncidents(
@@ -96,9 +95,7 @@ func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, e
 		return nil, err
 	}
 
-	incidentList, err := p.pagerdutyClient.ListIncidents(pagerduty.ListIncidentsOptions{
-		Statuses: []string{StatusTriggered},
-	})
+	incidentList, err := p.pagerdutyClient.ListIncidents(pagerduty.ListIncidentsOptions{})
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +108,6 @@ func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, e
 		}
 		foundAlertname, nameOK := matchMap["alertname"]
 		foundRegion, regionOK := matchMap["region"]
-		p.logger.LogDebug("found incident", "name", foundAlertname, "region", foundRegion)
 		if !nameOK || !regionOK {
 			p.logger.LogError(
 				"incident parsing failed",
@@ -119,6 +115,9 @@ func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, e
 			)
 			continue
 		}
+
+		p.logger.LogDebug("found incident", "name", foundAlertname, "region", foundRegion)
+
 		if foundAlertname == alert.Name() && foundRegion == regionName {
 			return &incident, nil
 		}
