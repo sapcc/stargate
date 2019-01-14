@@ -28,7 +28,7 @@ import (
 )
 
 // HandleSlackCommand responds to slack commands
-func (s *slackClient) HandleSlackCommand(r *http.Request) {
+func (s *Client) HandleSlackCommand(r *http.Request) {
 	slashCommand, err := slack.SlashCommandParse(r)
 	if err != nil {
 		s.logger.LogError("failed to parse slash command", err)
@@ -44,7 +44,7 @@ func (s *slackClient) HandleSlackCommand(r *http.Request) {
 		region := parseRegionFromText(slashCommand.Text)
 
 		if region == "" {
-			s.postMessageToChannel(
+			s.PostMessage(
 				slashCommand.UserID,
 				fmt.Sprintf("missing region. usage: %s %s <region>", slashCommand.Command, slashCommand.Text),
 				"")
@@ -72,7 +72,7 @@ func (s *slackClient) HandleSlackCommand(r *http.Request) {
 				msg += util.PrintableAlertDetails(alertsBySeverity)
 			}
 
-			s.postMessageToChannel(slashCommand.ChannelID, msg, "")
+			s.PostMessage(slashCommand.ChannelID, msg, "")
 		}
 	}
 }

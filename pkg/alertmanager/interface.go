@@ -30,6 +30,6 @@ import (
 type Alertmanager interface {
 	CreateSilence(alert *model.Alert, author, comment string, duration time.Duration) (string, error)
 	LinkToSilence(silenceID string) string
-	AcknowledgeAlert(alert *model.Alert, acknowledgedBy string) error
+	AcknowledgeAlert(alert *model.Alert, acknowledgedBy string) ([]*client.ExtendedAlert, error)
 	ListAlerts(filter map[string]string) ([]*client.ExtendedAlert, error)
 }

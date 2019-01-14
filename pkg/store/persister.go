@@ -34,18 +34,18 @@ import (
 )
 
 type filePersister struct {
-	mtx       sync.RWMutex
-	filePath  string
+	mtx        sync.RWMutex
+	filePath   string
 	gcInterval time.Duration
-	reader    io.Reader
-	logger    log.Logger
+	reader     io.Reader
+	logger     log.Logger
 }
 
 func NewFilePersister(filePath string, gcInterval time.Duration, logger log.Logger) (*filePersister, error) {
 	p := &filePersister{
-		filePath: filePath,
+		filePath:   filePath,
 		gcInterval: gcInterval,
-		logger:   log.NewLoggerWith(logger, "component", "filePersister"),
+		logger:     log.NewLoggerWith(logger, "component", "filePersister"),
 	}
 
 	f, err := p.openOrCreateFile()

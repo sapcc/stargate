@@ -20,14 +20,16 @@
 package store
 
 import (
+	"context"
 	"time"
 
+	"github.com/prometheus/alertmanager/client"
 	alertmanager_store "github.com/prometheus/alertmanager/store"
+	"github.com/prometheus/alertmanager/types"
+	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/metrics"
-	"context"
-	"github.com/prometheus/common/model"
-	"github.com/prometheus/alertmanager/types"
+	"github.com/sapcc/stargate/pkg/util"
 )
 
 type AlertStore struct {
@@ -74,6 +76,19 @@ func (a *AlertStore) Set(alert *types.Alert) error {
 	return a.store.Set(alert)
 }
 
+func (a *AlertStore) SetFromExtendedAlert(extendedAlert *client.ExtendedAlert) error {
+	alert := &types.Alert{
+		Alert: model.Alert{
+			StartsAt:     extendedAlert.StartsAt,
+			EndsAt:       extendedAlert.EndsAt,
+			GeneratorURL: extendedAlert.GeneratorURL,
+			Annotations:  util.ToModelLabelSet(extendedAlert.Annotations),
+			Labels:       util.ToModelLabelSet(extendedAlert.Labels),
+		},
+	}
+	return a.store.Set(alert)
+}
+
 func (a *AlertStore) Count() int {
 	return a.store.Count()
 }
@@ -81,7 +96,7 @@ func (a *AlertStore) Count() int {
 func (a *AlertStore) List() []*types.Alert {
 	a.store.Lock()
 	defer a.store.Unlock()
-	
+
 	alertList := make([]*types.Alert, 0)
 	for alert := range a.store.List() {
 		alertList = append(alertList, alert)
@@ -99,14 +114,14 @@ func (a *AlertStore) Snapshot() error {
 	start := time.Now()
 	a.store.Lock()
 	defer a.store.Unlock()
-	
+
 	defer func() {
 		snapShotDuration := time.Since(start).Seconds()
 		a.logger.LogInfo("persisted alert snapshot", "size", snapshotSize, "duration (s)", snapShotDuration)
 		metrics.SnapshotDuration.Observe(snapShotDuration)
 		metrics.SnapshotSize.Set(float64(snapshotSize))
 	}()
-	
+
 	snapshotSize, err := a.persister.Store(a.store)
 	if err != nil {
 		return err

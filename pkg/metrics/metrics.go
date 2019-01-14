@@ -56,14 +56,14 @@ var (
 		Name:      "successful_operations_total",
 		Help:      "Count of all successful operations",
 		Namespace: MetricNamespace,
-	}, []string{"component", "action"})
+	}, []string{"operation"})
 
 	// FailedOperationsTotal ...
 	FailedOperationsTotal = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name:      "failed_operations_total",
 		Help:      "Count of all failed operations",
 		Namespace: MetricNamespace,
-	}, []string{"component", "action"})
+	}, []string{"operation"})
 
 	// SnapshotSize ...
 	SnapshotSize = prometheus.NewGauge(prometheus.GaugeOpts{

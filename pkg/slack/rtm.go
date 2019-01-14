@@ -16,13 +16,13 @@ func NewSlackRTM(config config.Config, opts config.Options) *slack.RTM {
 }
 
 // Run starts the slack RTM client
-func (s *slackClient) RunRTM() {
+func (s *Client) RunRTM() {
 	s.logger.LogInfo("starting slack real time messaging")
 	go s.slackRTMClient.ManageConnection()
 	go s.HandleRTMEvent()
 }
 
-func (s *slackClient) HandleRTMEvent() {
+func (s *Client) HandleRTMEvent() {
 	for msg := range s.slackRTMClient.IncomingEvents {
 		switch event := msg.Data.(type) {
 
@@ -54,7 +54,7 @@ func (s *slackClient) HandleRTMEvent() {
 					msg += util.PrintableAlertDetails(alertsBySeverity)
 				}
 
-				s.postMessageToChannel(event.Channel, msg, "")
+				s.PostMessage(event.Channel, msg, "")
 			}
 
 			s.logger.LogDebug("responding to action", "user", event.User, "channel", event.Channel, "text", event.Text)

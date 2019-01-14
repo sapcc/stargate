@@ -25,7 +25,7 @@ import (
 
 	"github.com/PagerDuty/go-pagerduty"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/model"
+	"github.com/prometheus/alertmanager/client"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/util"
@@ -60,9 +60,9 @@ func NewClient(config config.Config, logger log.Logger) *Client {
 }
 
 // AcknowledgeIncident acknowledges a currently firing incident
-func (p *Client) AcknowledgeIncident(alert *model.Alert, userEmail string) error {
+func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail string) error {
 	if userEmail == "" {
-		return fmt.Errorf("cannot acknowledge alert '%s' without a mail address", alert.Name())
+		return fmt.Errorf("cannot acknowledge alert '%s' without a mail address", alert.Alert)
 	}
 
 	userID, err := p.findUserIDByEmail(userEmail)
@@ -89,8 +89,13 @@ func (p *Client) AcknowledgeIncident(alert *model.Alert, userEmail string) error
 }
 
 // findIncident finds triggered incidents in pagerduty by alertname, region
-func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, error) {
-	regionName, err := util.GetRegionFromAlert(alert)
+func (p *Client) findIncidentByAlert(alert *client.ExtendedAlert) (*pagerduty.Incident, error) {
+	regionName, err := util.GetRegionFromExtendedAlert(alert)
+	if err != nil {
+		return nil, err
+	}
+
+	alertName, err := util.GetAlertnameFromExtendedAlert(alert)
 	if err != nil {
 		return nil, err
 	}
@@ -118,11 +123,11 @@ func (p *Client) findIncidentByAlert(alert *model.Alert) (*pagerduty.Incident, e
 
 		p.logger.LogDebug("found incident", "name", foundAlertname, "region", foundRegion)
 
-		if foundAlertname == alert.Name() && foundRegion == regionName {
+		if foundAlertname == alertName && foundRegion == regionName {
 			return &incident, nil
 		}
 	}
-	return nil, fmt.Errorf("no incident found for alert name: '%s', region: '%s'", alert.Name(), regionName)
+	return nil, fmt.Errorf("no incident found for alert name: '%s', region: '%s'", alertName, regionName)
 }
 
 func (p *Client) findUserIDByEmail(userEmail string) (string, error) {

@@ -13,7 +13,7 @@ GOFILES  := $(wildcard $(GOFILES))
 
 GLIDE := $(shell command -v glide 2> /dev/null)
 
-.PHONY: all clean tests static-check
+.PHONY: all clean vendor tests static-check
 
 all: bin/$(GOOS)/$(BINARY)
 
@@ -42,3 +42,7 @@ helm-values:
 
 clean:
 	rm -rf bin/*
+
+vendor:
+	GO111MODULE=on go get -u ./... && go mod tidy && go mod vendor
+

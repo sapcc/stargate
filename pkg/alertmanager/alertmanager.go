@@ -134,10 +134,10 @@ func (a *alertmanagerClient) LinkToSilence(silenceID string) string {
 	return fmt.Sprintf("%s/#/silences/%s", a.Config.AlertManager.URL, silenceID)
 }
 
-func (a *alertmanagerClient) AcknowledgeAlert(alert *model.Alert, acknowledgedBy string) error {
+func (a *alertmanagerClient) AcknowledgeAlert(alert *model.Alert, acknowledgedBy string) ([]*client.ExtendedAlert, error) {
 	alertList, err := a.findAlerts(alert)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for idx, a := range alertList {
@@ -147,11 +147,7 @@ func (a *alertmanagerClient) AcknowledgeAlert(alert *model.Alert, acknowledgedBy
 		}
 		alertList[idx].Annotations[AcknowledgedByLabel] = client.LabelValue(acknowledgedBy)
 	}
-
-	return a.alertAPIClient.Push(
-		context.TODO(),
-		alertList...,
-	)
+	return alertList, nil
 }
 
 func (a *alertmanagerClient) ListAlerts(filter map[string]string) ([]*client.ExtendedAlert, error) {
@@ -164,7 +160,7 @@ func (a *alertmanagerClient) ListAlerts(filter map[string]string) ([]*client.Ext
 	)
 }
 
-func (a *alertmanagerClient) findAlerts(alert *model.Alert) ([]client.Alert, error) {
+func (a *alertmanagerClient) findAlerts(alert *model.Alert) ([]*client.ExtendedAlert, error) {
 	var filterList []string
 	for labelName, labelValue := range alert.Labels {
 		filterList = append(filterList, fmt.Sprintf(`%s="%s"`, labelName, labelValue))
@@ -181,12 +177,7 @@ func (a *alertmanagerClient) findAlerts(alert *model.Alert) ([]client.Alert, err
 		return nil, fmt.Errorf("no alert(s) with name '%v' found", alert.Labels[model.AlertNameLabel])
 	}
 
-	var alertList = make([]client.Alert, 0)
-	for _, al := range extendedAlertList {
-		alertList = append(alertList, al.Alert)
-	}
-
-	return alertList, nil
+	return extendedAlertList, nil
 }
 
 func matchersWithoutAuthor(matchers types.Matchers) types.Matchers {

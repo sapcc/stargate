@@ -40,27 +40,22 @@ var AlertSeverity = struct {
 	"info",
 }
 
-// GetRegionFromAlert extracts the region label from an alert
-func GetRegionFromAlert(alert *model.Alert) (string, error) {
-	return findLabelValueInAlert(alert, alertmanager.RegionLabel)
+// GetAlertnameFromExtendedAlert extracts the alertname label from an alert.
+func GetAlertnameFromExtendedAlert(alert *client.ExtendedAlert) (string, error) {
+	return findLabelValueInExtendedAlert(alert, model.AlertNameLabel)
 }
 
-// GetSeverityFromAlert extract the severity label from an alert
-func GetSeverityFromAlert(alert *model.Alert) (string, error) {
-	return findLabelValueInAlert(alert, alertmanager.SeverityLabel)
+// GetRegionFromAlert extracts the region label from an alert.
+func GetRegionFromExtendedAlert(alert *client.ExtendedAlert) (string, error) {
+	return findLabelValueInExtendedAlert(alert, alertmanager.RegionLabel)
 }
 
-// GetSeverityFromExtendedAlert extract the severity label from an alert
+// GetSeverityFromAlert extract the severity label from an alert.
 func GetSeverityFromExtendedAlert(alert *client.ExtendedAlert) (string, error) {
-	for ln, labelValue := range alert.Labels {
-		if string(ln) == alertmanager.SeverityLabel {
-			return string(labelValue), nil
-		}
-	}
-	return "", fmt.Errorf("label 'severity' not found in alert '%v'", alert)
+	return findLabelValueInExtendedAlert(alert, alertmanager.SeverityLabel)
 }
 
-// MapExtendedAlertsBySeverity maps alerts to their severity for easier lookup
+// MapExtendedAlertsBySeverity maps alerts to their severity for easier lookup.
 func MapExtendedAlertsBySeverity(alertList []*client.ExtendedAlert) (map[string][]*client.ExtendedAlert, error) {
 	var alertsFilteredBySeverity = map[string][]*client.ExtendedAlert{}
 	for _, alert := range alertList {
@@ -78,6 +73,37 @@ func MapExtendedAlertsBySeverity(alertList []*client.ExtendedAlert) (map[string]
 		}
 	}
 	return alertsFilteredBySeverity, nil
+}
+
+// CountAcknowledgedAlerts returns the number of acknowledged alerts in a list
+func CountAcknowledgedAlerts(alertList []*client.ExtendedAlert) int {
+	var count int
+	for _, alert := range alertList {
+		_, ok := alert.Labels[alertmanager.AcknowledgedByLabel]
+		if ok {
+			count++
+		}
+	}
+	return count
+}
+
+// IsNoCriticalOrWarningAlerts checks whether critical or warning alerts exist
+func IsNoCriticalOrWarningAlerts(alertsBySeverity map[string][]*client.ExtendedAlert) bool {
+	_, criticalOK := alertsBySeverity[AlertSeverity.Critical]
+	_, warningOK := alertsBySeverity[AlertSeverity.Warning]
+	if !criticalOK && !warningOK {
+		return true
+	}
+	return false
+}
+
+// ToModelLabelSet converts a client.LabelSet to a model.LabelSet
+func ToModelLabelSet(labelSet client.LabelSet) model.LabelSet {
+	modelLabelSet := model.LabelSet{}
+	for labelName, labelValue := range labelSet {
+		modelLabelSet[model.LabelName(labelName)] = model.LabelValue(labelValue)
+	}
+	return modelLabelSet
 }
 
 // PrintableAlertSummary ...
@@ -123,44 +149,11 @@ func PrintableAlertDetails(alertsBySeverity map[string][]*client.ExtendedAlert) 
 	return detailsString
 }
 
-// CountAcknowledgedAlerts ...
-func CountAcknowledgedAlerts(alertList []*client.ExtendedAlert) int {
-	var count int
-	for _, alert := range alertList {
-		_, ok := alert.Labels[alertmanager.AcknowledgedByLabel]
-		if ok {
-			count++
-		}
-	}
-	return count
-}
-
-// IsNoCriticalOrWarningAlerts checks whether critical or warning alerts exist
-func IsNoCriticalOrWarningAlerts(alertsBySeverity map[string][]*client.ExtendedAlert) bool {
-	_, criticalOK := alertsBySeverity[AlertSeverity.Critical]
-	_, warningOK := alertsBySeverity[AlertSeverity.Warning]
-	if !criticalOK && !warningOK {
-		return true
-	}
-
-	return false
-}
-
-func findLabelValueInAlert(alert *model.Alert, labelName string) (string, error) {
+func findLabelValueInExtendedAlert(alert *client.ExtendedAlert, labelName string) (string, error) {
 	for ln, labelValue := range alert.Labels {
 		if string(ln) == labelName {
 			return string(labelValue), nil
 		}
 	}
 	return "", fmt.Errorf("label '%s' not found in alert '%v'", labelName, alert)
-}
-
-func MergeAnnotations(modelAlert *types.Alert, clientExtendedAlert *client.ExtendedAlert) client.LabelSet {
-	modelLabelSet := modelAlert.Annotations
-	clientLabelSet := clientExtendedAlert.Annotations
-
-	for k, v := range modelLabelSet {
-		clientLabelSet[client.LabelName(k)] = client.LabelValue(v)
-	}
-	return clientLabelSet
 }
