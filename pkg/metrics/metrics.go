@@ -35,6 +35,8 @@ func init() {
 		HTTPRequestsTotal,
 		SuccessfulOperationsTotal,
 		FailedOperationsTotal,
+		SnapshotSize,
+		SnapshotDuration,
 	)
 }
 
@@ -62,6 +64,20 @@ var (
 		Help:      "Count of all failed operations",
 		Namespace: MetricNamespace,
 	}, []string{"component", "action"})
+
+	// SnapshotSize ...
+	SnapshotSize = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name:      "snapshot_size",
+		Help:      "Size of the snapshots",
+		Namespace: MetricNamespace,
+	})
+
+	// SnapshotDuration ...
+	SnapshotDuration = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:      "snapshot_duration",
+		Help:      "Duration of the snapshot",
+		Namespace: MetricNamespace,
+	})
 )
 
 // Serve ...

@@ -20,6 +20,7 @@
 package stargate
 
 import (
+	"encoding/json"
 	"net/http"
 	"sync"
 	"time"
@@ -29,6 +30,8 @@ import (
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/slack"
+	"github.com/sapcc/stargate/pkg/store"
+	"github.com/sapcc/stargate/pkg/util"
 )
 
 // Stargate ...
@@ -38,6 +41,7 @@ type Stargate struct {
 	alertmanagerClient alertmanager.Alertmanager
 	slack              slack.Receiver
 	opts               config.Options
+	alertStore         *store.AlertStore
 
 	Config config.Config
 }
@@ -51,11 +55,18 @@ func New(opts config.Options) *Stargate {
 		logger.LogFatal("failed to load configuration", "err", err)
 	}
 
+	persister, err := store.NewFilePersister(opts.PersistenceFilePath, opts.GCInterval, logger)
+	if err != nil {
+		logger.LogError("failed to create persister. running in stateless mode", err)
+	}
+
 	sg := &Stargate{
-		Config: cfg,
-		slack:  slack.NewSlackClient(cfg, opts, logger),
-		opts:   opts,
-		logger: logger,
+		Config:             cfg,
+		slack:              slack.NewSlackClient(cfg, opts, logger),
+		opts:               opts,
+		alertmanagerClient: alertmanager.New(cfg, logger),
+		alertStore:         store.NewAlertStore(opts.GCInterval, persister, logger),
+		logger:             logger,
 	}
 
 	v1API := api.NewAPI(cfg, logger)
@@ -65,6 +76,8 @@ func New(opts config.Options) *Stargate {
 
 	// the v1 endpoint that accepts slack commands
 	v1API.AddRouteV1(http.MethodPost, "/slack/command", sg.HandleSlackCommand)
+
+	v1API.AddRouteV1(http.MethodGet, "/alerts", sg.HandleListAlerts)
 
 	sg.v1API = v1API
 	return sg
@@ -131,4 +144,20 @@ func (s *Stargate) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
 		}
 	}()
 	<-stopCh
+}
+
+func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
+	alertList, err := s.alertmanagerClient.ListAlerts(map[string]string{})
+	if err != nil {
+		s.logger.LogError("error listing alerts", err)
+	}
+
+	for idx, alert := range alertList {
+		a, err := s.alertStore.GetFromFingerPrintString(alert.Fingerprint)
+		if err != nil {
+			alertList[idx].Annotations = util.MergeAnnotations(a, alert)
+		}
+	}
+
+	json.NewEncoder(w).Encode(alertList)
 }

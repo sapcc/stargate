@@ -19,14 +19,16 @@
 
 package config
 
+import "time"
+
 // Options passed via cmd line
 type Options struct {
-	ListenPort  int
-	MetricPort  int
-	ExternalURL string
-
-	ConfigFilePath string
-
-	IsDebug           bool
-	IsDisableSlackRTM bool
+	ListenPort          int
+	MetricPort          int
+	ExternalURL         string
+	ConfigFilePath      string
+	PersistenceFilePath string
+	GCInterval          time.Duration
+	IsDebug             bool
+	IsDisableSlackRTM   bool
 }

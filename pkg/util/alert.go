@@ -154,3 +154,13 @@ func findLabelValueInAlert(alert *model.Alert, labelName string) (string, error)
 	}
 	return "", fmt.Errorf("label '%s' not found in alert '%v'", labelName, alert)
 }
+
+func MergeAnnotations(modelAlert *types.Alert, clientExtendedAlert *client.ExtendedAlert) client.LabelSet {
+	modelLabelSet := modelAlert.Annotations
+	clientLabelSet := clientExtendedAlert.Annotations
+
+	for k, v := range modelLabelSet {
+		clientLabelSet[client.LabelName(k)] = client.LabelValue(v)
+	}
+	return clientLabelSet
+}

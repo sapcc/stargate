@@ -13,7 +13,7 @@ GOFILES  := $(wildcard $(GOFILES))
 
 GLIDE := $(shell command -v glide 2> /dev/null)
 
-.PHONY: all clean vendor tests static-check
+.PHONY: all clean tests static-check
 
 all: bin/$(GOOS)/$(BINARY)
 
