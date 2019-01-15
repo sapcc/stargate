@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,16 +17,18 @@
 *
 *******************************************************************************/
 
-package util
+package alert
 
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/prometheus/alertmanager/client"
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/alertmanager"
+	"github.com/sapcc/stargate/pkg/util"
 )
 
 // AlertSeverity ...
@@ -40,17 +42,55 @@ var AlertSeverity = struct {
 	"info",
 }
 
+// AcknowledgeAlert sets the acknowledgedBy annotation for an alert
+func AcknowledgeAlert(alert *client.ExtendedAlert, acknowledgedBy string) *client.ExtendedAlert {
+	clone := cloneAlert(alert)
+
+	if clone.Annotations == nil {
+		clone.Annotations = client.LabelSet{}
+	}
+
+	ack, ok := clone.Annotations[alertmanager.AcknowledgedByLabel]
+	if !ok {
+		clone.Annotations[alertmanager.AcknowledgedByLabel] = client.LabelValue(acknowledgedBy)
+		return clone
+	}
+
+	// alert already acked by this person.
+	if strings.Contains(string(ack), acknowledgedBy) {
+		return clone
+	}
+
+	acknowledgedBy = fmt.Sprintf("%s, %s", ack, acknowledgedBy)
+	clone.Annotations[alertmanager.AcknowledgedByLabel] = client.LabelValue(acknowledgedBy)
+	return clone
+}
+
+// AcknowledgeAlerts acknowledges multiple alerts
+func AcknowledgeAlerts(alertList []*client.ExtendedAlert, acknowledgedBy string) []*client.ExtendedAlert {
+	ackedAlertList := make([]*client.ExtendedAlert, len(alertList))
+	for idx, alert := range alertList {
+		ackedAlertList[idx] = AcknowledgeAlert(alert, acknowledgedBy)
+	}
+	return ackedAlertList
+}
+
+func cloneAlert(alert *client.ExtendedAlert) *client.ExtendedAlert {
+	clone := *alert
+	return &clone
+}
+
 // GetAlertnameFromExtendedAlert extracts the alertname label from an alert.
 func GetAlertnameFromExtendedAlert(alert *client.ExtendedAlert) (string, error) {
 	return findLabelValueInExtendedAlert(alert, model.AlertNameLabel)
 }
 
-// GetRegionFromAlert extracts the region label from an alert.
+// GetRegionFromExtendedAlert extracts the region label from an alert.
 func GetRegionFromExtendedAlert(alert *client.ExtendedAlert) (string, error) {
 	return findLabelValueInExtendedAlert(alert, alertmanager.RegionLabel)
 }
 
-// GetSeverityFromAlert extract the severity label from an alert.
+// GetSeverityFromExtendedAlert extract the severity label from an alert.
 func GetSeverityFromExtendedAlert(alert *client.ExtendedAlert) (string, error) {
 	return findLabelValueInExtendedAlert(alert, alertmanager.SeverityLabel)
 }
@@ -106,6 +146,15 @@ func ToModelLabelSet(labelSet client.LabelSet) model.LabelSet {
 	return modelLabelSet
 }
 
+// MergeAnnotations merges annotations for mult. alerts.
+func MergeAnnotations(srcAlert, trgtAlert *client.ExtendedAlert) client.LabelSet {
+	trgtAnnotations := trgtAlert.Annotations
+	for k, v := range srcAlert.Annotations {
+		trgtAnnotations[client.LabelName(k)] = client.LabelValue(v)
+	}
+	return trgtAnnotations
+}
+
 // PrintableAlertSummary ...
 func PrintableAlertSummary(alertsBySeverity map[string][]*client.ExtendedAlert) string {
 	var region string
@@ -139,7 +188,7 @@ func PrintableAlertDetails(alertsBySeverity map[string][]*client.ExtendedAlert) 
 				"| %-30s| %-20s| %-15s| %-10s| %-30s|\n",
 				alert.Labels[model.AlertNameLabel],
 				alert.Labels["service"],
-				HumanizedDurationString(time.Now().UTC().Sub(alert.StartsAt.UTC())),
+				util.HumanizedDurationString(time.Now().UTC().Sub(alert.StartsAt.UTC())),
 				alert.Labels[alertmanager.SeverityLabel],
 				alert.Labels[alertmanager.AcknowledgedByLabel],
 			)

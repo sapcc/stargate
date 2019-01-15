@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -83,11 +83,12 @@ var (
 // Serve ...
 func Serve(opts config.Options, logger log.Logger) {
 	host := "0.0.0.0"
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%v", host, opts.MetricPort))
-	defer listener.Close()
 
 	logger = log.NewLoggerWith(logger, "component", "metrics")
 	logger.LogInfo("exposing prometheus metrics", "host", host, "port", opts.MetricPort)
+
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%v", host, opts.MetricPort))
+	defer listener.Close()
 
 	if err == nil {
 		http.Serve(listener, promhttp.Handler())

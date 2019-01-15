@@ -18,3 +18,4 @@ vendor/**
 
 helm/**/*tgz
 config.yaml
+*.dump

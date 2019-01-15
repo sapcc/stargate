@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@ import (
 	"github.com/nlopes/slack"
 	"github.com/nlopes/slack/slackevents"
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/model"
+	"github.com/prometheus/alertmanager/client"
+	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/util"
@@ -37,14 +38,17 @@ type Client struct {
 	config config.Config
 	logger log.Logger
 
-	// list of slack user ids that are authorized to interact with stargate messages
+	// list of slack user ids that are authorized to interact with stargate messages.
 	authorizedUserIDs []string
 
 	Client         *slack.Client
 	slackRTMClient *slack.RTM
+
+	// only used in bot mode
+	alertmanagerClient *alertmanager.Client
 }
 
-// NewClient returns a new slack client
+// NewClient returns a new slack client.
 func NewClient(config config.Config, opts config.Options, logger log.Logger) *Client {
 	s := slack.New(config.Slack.AccessToken)
 	s.SetDebug(opts.IsDebug)
@@ -61,7 +65,7 @@ func NewClient(config config.Config, opts config.Options, logger log.Logger) *Cl
 		Client.slackRTMClient = NewSlackRTM(config, opts)
 	}
 
-	// get the list initially. refresh every slack.recheck_interval
+	// get the list initially. refresh every slack.recheck_interval.
 	if err := Client.GetAuthorizedSlackUserGroupMembers(); err != nil {
 		logger.LogFatal("failed to get authorized slack users", "err", err)
 	}
@@ -69,21 +73,24 @@ func NewClient(config config.Config, opts config.Options, logger log.Logger) *Cl
 	return Client
 }
 
-// AlertFromSlackMessage extracts an alert from a message
-func (s *Client) AlertFromSlackMessage(message slack.Message) (*model.Alert, error) {
+// AlertFromSlackMessage extracts an alert from a message.
+func (s *Client) AlertFromSlackMessage(message slack.Message) (*client.ExtendedAlert, error) {
 	text := messageTextFromSlack(message)
 	labels, err := parseAlertFromSlackMessageText(text)
 	if err != nil {
-		return &model.Alert{}, err
+		return &client.ExtendedAlert{}, err
 	}
-	modelLabelset := model.LabelSet{}
+	labelset := client.LabelSet{}
 
 	for k, v := range labels {
-		modelLabelset[model.LabelName(k)] = model.LabelValue(v)
+		labelset[client.LabelName(k)] = client.LabelValue(v)
 	}
 
-	return &model.Alert{
-		Labels: modelLabelset,
+	return &client.ExtendedAlert{
+		Alert: client.Alert{
+			Labels:      labelset,
+			Annotations: client.LabelSet{},
+		},
 	}, nil
 }
 
@@ -91,7 +98,7 @@ func messageTextFromSlack(message slack.Message) string {
 	var text string
 	if message.Text != "" {
 		text = message.Text
-		// sometimes it's in the attachment
+		// sometimes it's in the attachment.
 	} else if message.Attachments != nil && len(message.Attachments) > 0 {
 		for _, attach := range message.Attachments {
 			if attach.Text != "" {
@@ -103,7 +110,7 @@ func messageTextFromSlack(message slack.Message) string {
 	return text
 }
 
-// GetAuthorizedSlackUserGroupMembers sets the authorized slack users based on the membership in slack groups
+// GetAuthorizedSlackUserGroupMembers sets the authorized slack users based on the membership in slack groups.
 func (s *Client) GetAuthorizedSlackUserGroupMembers() error {
 	userGroupIDs, err := s.userGroupNamesToIDs(s.config.Slack.AuthorizedGroups)
 	if err != nil {
@@ -133,7 +140,7 @@ func (s *Client) GetAuthorizedSlackUserGroupMembers() error {
 }
 
 // for convenience slack user groups are configured by name rather than ID.
-// userGroupNamesToIDs finds the ID based on the name of a slack user group
+// userGroupNamesToIDs finds the ID based on the name of a slack user group.
 func (s *Client) userGroupNamesToIDs(userGroupNames []string) ([]string, error) {
 	userGroupIDs := make([]string, 0)
 	userGroups, err := s.Client.GetUserGroups()
@@ -149,6 +156,7 @@ func (s *Client) userGroupNamesToIDs(userGroupNames []string) ([]string, error) 
 	return userGroupIDs, nil
 }
 
+// IsUserAuthorized checks whether a user is authorized.
 func (s *Client) IsUserAuthorized(userID string) bool {
 	return util.StringSliceContains(s.authorizedUserIDs, userID)
 }
@@ -199,7 +207,7 @@ func (s *Client) PostMessage(channel, message, timestamp string) {
 		postMessageParameters.IconEmoji = s.config.Slack.UserIcon
 	}
 
-	// respond to another message in an existing thread or create one
+	// respond to another message in an existing thread or create one.
 	if timestamp != "" {
 		postMessageParameters.ThreadTimestamp = timestamp
 	}
@@ -215,6 +223,7 @@ func (s *Client) PostMessage(channel, message, timestamp string) {
 	}
 }
 
+// AddReactionToMessage adds a reaction to a message.
 func (s *Client) AddReactionToMessage(channel, timestamp, reaction string) {
 	s.logger.LogDebug("adding reaction to message", "reaction", reaction, "channel", channel, "timestamp", timestamp)
 	msgRef := slack.NewRefToMessage(channel, timestamp)
@@ -223,7 +232,7 @@ func (s *Client) AddReactionToMessage(channel, timestamp, reaction string) {
 	}
 }
 
-// MessageActionFromPayload retrieves the slack message action from a payload
+// MessageActionFromPayload retrieves the slack message action from a payload.
 func (s *Client) MessageActionFromPayload(payload string) (slackevents.MessageAction, error) {
 	slackMessageAction, err := slackevents.ParseActionEvent(
 		payload,
@@ -233,11 +242,11 @@ func (s *Client) MessageActionFromPayload(payload string) (slackevents.MessageAc
 	return slackMessageAction, err
 }
 
-// ActionFromSlackMessage retrieves the action from a slack message
+// ActionFromSlackMessage retrieves the action from a slack message.
 func (s *Client) ActionFromSlackMessage(messageAction slackevents.MessageAction) ([]string, error) {
 	reactions := make([]string, 0)
 	for _, action := range messageAction.Actions {
-		// only react to buttons clicks
+		// only react to buttons clicks.
 		if action.Name != ActionName || action.Type != ActionType {
 			s.logger.LogDebug("ignoring action",
 				"actionName", action.Name,

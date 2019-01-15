@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -20,32 +20,31 @@
 package store
 
 import (
+	"encoding/gob"
 	"fmt"
+	"github.com/prometheus/alertmanager/client"
+	"github.com/prometheus/common/model"
+	"github.com/sapcc/stargate/pkg/log"
 	"io"
 	"math/rand"
 	"os"
 	"sync"
-	"time"
-
-	"encoding/gob"
-	"github.com/prometheus/alertmanager/store"
-	"github.com/prometheus/alertmanager/types"
-	"github.com/sapcc/stargate/pkg/log"
 )
 
-type filePersister struct {
-	mtx        sync.RWMutex
-	filePath   string
-	gcInterval time.Duration
-	reader     io.Reader
-	logger     log.Logger
+// FilePersister is used to save/load an AlertStore to/from a file.
+type FilePersister struct {
+	mtx      sync.RWMutex
+	filePath string
+	reader   io.Reader
+	logger   log.Logger
 }
 
-func NewFilePersister(filePath string, gcInterval time.Duration, logger log.Logger) (*filePersister, error) {
-	p := &filePersister{
-		filePath:   filePath,
-		gcInterval: gcInterval,
-		logger:     log.NewLoggerWith(logger, "component", "filePersister"),
+// NewFilePersister returns a new FilePersister.
+func NewFilePersister(filePath string, logger log.Logger) (*FilePersister, error) {
+	p := &FilePersister{
+		mtx:      sync.RWMutex{},
+		filePath: filePath,
+		logger:   log.NewLoggerWith(logger, "component", "FilePersister"),
 	}
 
 	f, err := p.openOrCreateFile()
@@ -57,25 +56,22 @@ func NewFilePersister(filePath string, gcInterval time.Duration, logger log.Logg
 	return p, nil
 }
 
-func (p *filePersister) openOrCreateFile() (*os.File, error) {
-	var (
-		f   *os.File
-		err error
-	)
-
-	f, err = os.Open(p.filePath)
-	if err != nil {
-		if os.IsExist(err) {
-			f, err = os.Create(p.filePath)
-			if err != nil {
-				return nil, err
-			}
+func (p *FilePersister) openOrCreateFile() (*os.File, error) {
+	f, err := os.Open(p.filePath)
+	if os.IsNotExist(err) {
+		f, err := os.Create(p.filePath)
+		if err != nil {
+			return nil, err
 		}
+		p.logger.LogInfo("created persistence file", "file", p.filePath)
+		return f, nil
 	}
-	return f, err
+	p.logger.LogInfo("using existing persistence file", "file", p.filePath)
+	return f, nil
 }
 
-func (p *filePersister) Load() (*store.Alerts, error) {
+// Load attempts to load a store from a file.
+func (p *FilePersister) Load() (map[model.Fingerprint]*client.ExtendedAlert, error) {
 	p.mtx.RLock()
 	defer p.mtx.RUnlock()
 
@@ -85,23 +81,27 @@ func (p *filePersister) Load() (*store.Alerts, error) {
 	}
 	defer f.Close()
 
-	type alertList []*types.Alert
+	type alertList []*client.ExtendedAlert
 	var l = new(alertList)
 	d := gob.NewDecoder(f)
 	if err := d.Decode(l); err != nil {
 		return nil, err
 	}
 
-	alertStore := store.NewAlerts(p.gcInterval)
+	store := make(map[model.Fingerprint]*client.ExtendedAlert)
 	for _, alert := range *l {
-		if err := alertStore.Set(alert); err != nil {
-			p.logger.LogError("error loading alert", err)
+		fp, err := model.FingerprintFromString(alert.Fingerprint)
+		if err != nil {
+			p.logger.LogError("error creating fingerprint for alert", err)
+			continue
 		}
+		store[fp] = alert
 	}
-	return alertStore, nil
+	return store, nil
 }
 
-func (p *filePersister) Store(alertStore *store.Alerts) (int64, error) {
+// Store attempts to save a store to a file.
+func (p *FilePersister) Store(store map[model.Fingerprint]*client.ExtendedAlert) (int64, error) {
 	var size int64
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
@@ -113,8 +113,8 @@ func (p *filePersister) Store(alertStore *store.Alerts) (int64, error) {
 	}
 	defer f.Close()
 
-	storeList := make([]*types.Alert, 0)
-	for alert := range alertStore.List() {
+	storeList := make([]*client.ExtendedAlert, 0)
+	for _, alert := range store {
 		storeList = append(storeList, alert)
 	}
 

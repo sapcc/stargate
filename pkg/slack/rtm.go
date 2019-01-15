@@ -2,10 +2,12 @@ package slack
 
 import (
 	"fmt"
+
 	"github.com/nlopes/slack"
 	"github.com/nlopes/slack/slackevents"
+	"github.com/sapcc/stargate/pkg/alert"
+	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/config"
-	"github.com/sapcc/stargate/pkg/util"
 )
 
 // NewSlackRTM ...
@@ -15,13 +17,14 @@ func NewSlackRTM(config config.Config, opts config.Options) *slack.RTM {
 	return client.NewRTM()
 }
 
-// Run starts the slack RTM client
+// RunRTM starts the slack RTM client
 func (s *Client) RunRTM() {
 	s.logger.LogInfo("starting slack real time messaging")
 	go s.slackRTMClient.ManageConnection()
 	go s.HandleRTMEvent()
 }
 
+// HandleRTMEvent handles slack RTM events
 func (s *Client) HandleRTMEvent() {
 	for msg := range s.slackRTMClient.IncomingEvents {
 		switch event := msg.Data.(type) {
@@ -35,23 +38,26 @@ func (s *Client) HandleRTMEvent() {
 
 			switch action {
 			case Action.ShowAlerts:
-				alertList, err := s.alertmanagerClient.ListAlerts(map[string]string{"region": region})
+				filter := alertmanager.NewDefaultFilter()
+				filter.WithAdditionalFilter(map[string]string{"region": region})
+
+				alertList, err := s.alertmanagerClient.ListAlerts(filter)
 				if err != nil {
 					s.logger.LogError("error listing alerts", err, "region", region)
 				}
 
-				alertsBySeverity, err := util.MapExtendedAlertsBySeverity(alertList)
+				alertsBySeverity, err := alert.MapExtendedAlertsBySeverity(alertList)
 				if err != nil {
 					s.logger.LogError("error mapping alerts by severity", err)
 					return
 				}
 
 				var msg string
-				if util.IsNoCriticalOrWarningAlerts(alertsBySeverity) {
+				if alert.IsNoCriticalOrWarningAlerts(alertsBySeverity) {
 					msg = fmt.Sprintf("Hey <@%s>, Relax! :green_heart:\nThere are no critical or warning alerts in %s.", event.User, region)
 				} else {
 					msg = fmt.Sprintf("Hey <@%s>, region %s shows:\n\n", event.User, region)
-					msg += util.PrintableAlertDetails(alertsBySeverity)
+					msg += alert.PrintableAlertDetails(alertsBySeverity)
 				}
 
 				s.PostMessage(event.Channel, msg, "")

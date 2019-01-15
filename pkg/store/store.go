@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -20,100 +20,183 @@
 package store
 
 import (
-	"context"
+	"sync"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/alertmanager/client"
-	alertmanager_store "github.com/prometheus/alertmanager/store"
-	"github.com/prometheus/alertmanager/types"
 	"github.com/prometheus/common/model"
+	"github.com/sapcc/stargate/pkg/alert"
+	"github.com/sapcc/stargate/pkg/alertmanager"
+	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/metrics"
-	"github.com/sapcc/stargate/pkg/util"
 )
 
+var (
+	// ErrNotFound is exactly that.
+	ErrNotFound = errors.New("alert not found")
+)
+
+// AlertStore ...
 type AlertStore struct {
-	persister *filePersister
-	store     *alertmanager_store.Alerts
-	logger    log.Logger
+	alertmanagerClient *alertmanager.Client
+	recheckInterval    time.Duration
+	mtx                sync.RWMutex
+	persister          *FilePersister
+	logger             log.Logger
+
+	// internal store with modified alert
+	s map[model.Fingerprint]*client.ExtendedAlert
+	// regularly cached alerts from alertmanager
+	alertCache map[model.Fingerprint]*client.ExtendedAlert
 }
 
-func NewAlertStore(gcInterval time.Duration, persister *filePersister, logger log.Logger) *AlertStore {
-	logger = log.NewLoggerWith(logger, "component", "AlertStore")
+// NewAlertStore creates a new AlertStore.
+func NewAlertStore(cfg config.Config, recheckInterval time.Duration, persister *FilePersister, logger log.Logger) *AlertStore {
+	logger = log.NewLoggerWith(logger, "component", "alertStore")
 
 	// load existing store or create a new
 	store, err := persister.Load()
 	if err != nil {
-		logger.LogInfo("cannot load alert store. creating new one", "err", err)
-		store = alertmanager_store.NewAlerts(gcInterval)
+		logger.LogDebug("cannot load alert store. creating new one", "err", err)
+		store = make(map[model.Fingerprint]*client.ExtendedAlert)
 	}
 
-	a := &AlertStore{
-		store:     store,
-		persister: persister,
-		logger:    logger,
+	return &AlertStore{
+		alertmanagerClient: alertmanager.New(cfg, logger),
+		recheckInterval:    recheckInterval,
+		mtx:                sync.RWMutex{},
+		persister:          persister,
+		logger:             logger,
+		s:                  store,
+		alertCache:         make(map[model.Fingerprint]*client.ExtendedAlert),
 	}
-	return a
 }
 
-func (a *AlertStore) Run(ctx context.Context) {
-	a.store.Run(ctx)
+// Run runs the AlertStore.
+func (a *AlertStore) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
+	wg.Add(1)
+	defer wg.Done()
+
+	a.logger.LogInfo("running alert store")
+	ticker := time.NewTicker(a.recheckInterval)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				err := a.syncWithAlertmanager()
+				if err != nil {
+					a.logger.LogError("sync with alertmanager failed", err)
+				} else {
+					a.garbageCollect()
+				}
+			case <-stopCh:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+	<-stopCh
 }
 
-func (a *AlertStore) Get(fp model.Fingerprint) (*types.Alert, error) {
-	return a.store.Get(fp)
+// Get returns an alert for a given Fingerprint or an error.
+func (a *AlertStore) Get(fp model.Fingerprint) (*client.ExtendedAlert, error) {
+	a.mtx.RLock()
+	defer a.mtx.RUnlock()
+
+	alert, ok := a.s[fp]
+	if !ok {
+		return nil, ErrNotFound
+	}
+	return alert, nil
 }
 
-func (a *AlertStore) GetFromFingerPrintString(fpString string) (*types.Alert, error) {
+// GetFromFingerPrintString returns an alert for a given Fingerprint or an error.
+func (a *AlertStore) GetFromFingerPrintString(fpString string) (*client.ExtendedAlert, error) {
 	fp, err := model.FingerprintFromString(fpString)
 	if err != nil {
 		return nil, err
 	}
-	return a.store.Get(fp)
+	return a.Get(fp)
 }
 
-func (a *AlertStore) Set(alert *types.Alert) error {
-	return a.store.Set(alert)
-}
+// Set adds an alert to the AlertStore.
+func (a *AlertStore) Set(alert *client.ExtendedAlert) error {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
 
-func (a *AlertStore) SetFromExtendedAlert(extendedAlert *client.ExtendedAlert) error {
-	alert := &types.Alert{
-		Alert: model.Alert{
-			StartsAt:     extendedAlert.StartsAt,
-			EndsAt:       extendedAlert.EndsAt,
-			GeneratorURL: extendedAlert.GeneratorURL,
-			Annotations:  util.ToModelLabelSet(extendedAlert.Annotations),
-			Labels:       util.ToModelLabelSet(extendedAlert.Labels),
-		},
+	fp, err := model.FingerprintFromString(alert.Fingerprint)
+	if err != nil {
+		return err
 	}
-	return a.store.Set(alert)
+	a.s[fp] = alert
+	return nil
 }
 
+// Count returns the number of items in the AlertStore.
 func (a *AlertStore) Count() int {
-	return a.store.Count()
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	return len(a.s)
 }
 
-func (a *AlertStore) List() []*types.Alert {
-	a.store.Lock()
-	defer a.store.Unlock()
+// List returns a list of alerts in the AlertStore.
+func (a *AlertStore) List() []*client.ExtendedAlert {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
 
-	alertList := make([]*types.Alert, 0)
-	for alert := range a.store.List() {
+	alertList := make([]*client.ExtendedAlert, len(a.s))
+	for _, alert := range a.s {
 		alertList = append(alertList, alert)
 	}
+
 	return alertList
 }
 
+// Delete removes an item from the AlertStore.
 func (a *AlertStore) Delete(fp model.Fingerprint) error {
-	return a.store.Delete(fp)
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	delete(a.s, fp)
+	return nil
+}
+
+// AcknowledgeAlert acknowledges an alert and adds it to the AlertStore.
+func (a *AlertStore) AcknowledgeAlert(al *client.ExtendedAlert, acknowledgedBy string) error {
+	fp, err := model.FingerprintFromString(al.Fingerprint)
+	if err != nil {
+		return err
+	}
+
+	extendedAlert, err := a.findAlertInAlertCache(fp)
+	if err != nil {
+		return err
+	}
+
+	ackedAlert := alert.AcknowledgeAlert(extendedAlert, acknowledgedBy)
+	return a.Set(ackedAlert)
+}
+
+// AcknowledgeAlerts acknowledges multiple alerts and adds them to the AlertStore.
+func (a *AlertStore) AcknowledgeAlerts(alertList []*client.ExtendedAlert, acknowledgedBy string) error {
+	for _, al := range alertList {
+		err := a.AcknowledgeAlert(al, acknowledgedBy)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Snapshot creates a snapshot of the current store
 func (a *AlertStore) Snapshot() error {
 	var snapshotSize int64
 	start := time.Now()
-	a.store.Lock()
-	defer a.store.Unlock()
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
 
 	defer func() {
 		snapShotDuration := time.Since(start).Seconds()
@@ -122,9 +205,89 @@ func (a *AlertStore) Snapshot() error {
 		metrics.SnapshotSize.Set(float64(snapshotSize))
 	}()
 
-	snapshotSize, err := a.persister.Store(a.store)
+	snapshotSize, err := a.persister.Store(a.s)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+func (a *AlertStore) garbageCollect() {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	for fp, alert := range a.s {
+		endsAt, isResolved := a.isAlertStillFiring(alert)
+		if isResolved {
+			delete(a.s, fp)
+		} else {
+			a.s[fp].EndsAt = endsAt
+		}
+	}
+}
+
+func (a *AlertStore) isAlertStillFiring(alert *client.ExtendedAlert) (time.Time, bool) {
+	isResolved := false
+	if time.Now().UTC().After(alert.EndsAt.UTC()) {
+		isResolved = true
+	}
+
+	fp, err := model.FingerprintFromString(alert.Fingerprint)
+	if err != nil {
+		a.logger.LogError("failed to create fingerprint for alert", err)
+		return alert.EndsAt.UTC(), false
+	}
+
+	cachedAlert, ok := a.alertCache[fp]
+	if !ok && isResolved {
+		// alert not found in alertmanager. must have been resolved.
+		return alert.EndsAt.UTC(), true
+	}
+	return cachedAlert.EndsAt.UTC(), false
+}
+
+func (a *AlertStore) syncWithAlertmanager() error {
+	filter := alertmanager.NewDefaultFilter()
+	filter.IsSilenced = true
+	alertList, err := a.alertmanagerClient.ListAlerts(filter)
+	if err != nil {
+		return err
+	}
+
+	m := make(map[model.Fingerprint]*client.ExtendedAlert)
+	for _, alert := range alertList {
+		fp, err := model.FingerprintFromString(alert.Fingerprint)
+		if err != nil {
+			a.logger.LogError("failed to create fingerprint for alert", err)
+			continue
+		}
+		m[fp] = alert
+	}
+
+	a.alertCache = m
+	return nil
+}
+
+func (a *AlertStore) findAlertInAlertCache(fp model.Fingerprint) (*client.ExtendedAlert, error) {
+	extendedAlert, ok := a.alertCache[fp]
+	if !ok {
+		// if alert wasn't found. try to sync once.
+		err := a.syncWithAlertmanager()
+		if err != nil {
+			return nil, err
+		}
+		extendedAlert, ok = a.alertCache[fp]
+		if !ok {
+			return nil, ErrNotFound
+		}
+	}
+	return extendedAlert, nil
+}
+
+// IsErrNotFound checks whether the error is an ErrNotFound
+func IsErrNotFound(err error) bool {
+	if err != nil {
+		return err.Error() == ErrNotFound.Error()
+	}
+	return false
 }

@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@ import (
 	"net/http"
 
 	"github.com/nlopes/slack"
-	"github.com/sapcc/stargate/pkg/util"
+	"github.com/sapcc/stargate/pkg/alert"
+	"github.com/sapcc/stargate/pkg/alertmanager"
 )
 
 // HandleSlackCommand responds to slack commands
@@ -53,23 +54,26 @@ func (s *Client) HandleSlackCommand(r *http.Request) {
 
 		switch action {
 		case Action.ShowAlerts:
-			alertList, err := s.alertmanagerClient.ListAlerts(map[string]string{"region": region})
+			filter := alertmanager.NewDefaultFilter()
+			filter.WithAdditionalFilter(map[string]string{"region": region})
+
+			alertList, err := s.alertmanagerClient.ListAlerts(filter)
 			if err != nil {
 				s.logger.LogError("error listing alerts in region", err, "region", region)
 			}
 
-			alertsBySeverity, err := util.MapExtendedAlertsBySeverity(alertList)
+			alertsBySeverity, err := alert.MapExtendedAlertsBySeverity(alertList)
 			if err != nil {
 				s.logger.LogError("", err)
 				return
 			}
 
 			var msg string
-			if util.IsNoCriticalOrWarningAlerts(alertsBySeverity) {
+			if alert.IsNoCriticalOrWarningAlerts(alertsBySeverity) {
 				msg = fmt.Sprintf("Hey <@%s>, Relax! :green_heart:\nThere are no critical or warning alerts in %s.", slashCommand.UserID, region)
 			} else {
 				msg = fmt.Sprintf("Hey <@%s>, region %s shows:\n\n", slashCommand.UserID, region)
-				msg += util.PrintableAlertDetails(alertsBySeverity)
+				msg += alert.PrintableAlertDetails(alertsBySeverity)
 			}
 
 			s.PostMessage(slashCommand.ChannelID, msg, "")

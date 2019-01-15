@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -25,10 +25,10 @@ import "time"
 type Options struct {
 	ListenPort          int
 	MetricPort          int
+	IsDebug             bool
+	IsDisableSlackRTM   bool
 	ExternalURL         string
 	ConfigFilePath      string
 	PersistenceFilePath string
-	GCInterval          time.Duration
-	IsDebug             bool
-	IsDisableSlackRTM   bool
+	RecheckInterval     time.Duration
 }

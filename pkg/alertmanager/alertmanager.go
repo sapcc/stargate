@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -22,14 +22,12 @@ package alertmanager
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/alertmanager/client"
 	"github.com/prometheus/alertmanager/types"
 	"github.com/prometheus/client_golang/api"
-	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
 )
@@ -45,7 +43,8 @@ const (
 	SeverityLabel = "severity"
 )
 
-type alertmanagerClient struct {
+// Client ...
+type Client struct {
 	Config config.Config
 
 	logger           log.Logger
@@ -53,8 +52,8 @@ type alertmanagerClient struct {
 	alertAPIClient   client.AlertAPI
 }
 
-// New creates a new Alertmanager
-func New(config config.Config, logger log.Logger) Alertmanager {
+// New creates a new Alertmanager client.
+func New(config config.Config, logger log.Logger) *Client {
 	logger = log.NewLoggerWith(logger, "component", "alertmanager")
 
 	apiClient, err := api.NewClient(api.Config{Address: config.AlertManager.URL})
@@ -62,7 +61,7 @@ func New(config config.Config, logger log.Logger) Alertmanager {
 		logger.LogFatal("failed to create alertmanager api client", "alertmanagerURL", config.AlertManager.URL, "err", err)
 	}
 
-	return &alertmanagerClient{
+	return &Client{
 		Config:           config,
 		logger:           logger,
 		silenceAPIClient: client.NewSilenceAPI(apiClient),
@@ -70,7 +69,8 @@ func New(config config.Config, logger log.Logger) Alertmanager {
 	}
 }
 
-func (a *alertmanagerClient) CreateSilence(alert *model.Alert, silenceAuthor, silenceComment string, silenceDuration time.Duration) (string, error) {
+// CreateSilence creates a silence.
+func (a *Client) CreateSilence(alert *client.ExtendedAlert, silenceAuthor, silenceComment string, silenceDuration time.Duration) (string, error) {
 	if alert == nil {
 		return "", errors.New("alert must not be nil")
 	}
@@ -82,7 +82,7 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, silenceAuthor, si
 	}
 
 	a.logger.LogInfo("creating silence",
-		"alertLabels", alert.Labels.String(),
+		"alertLabels", alert.Labels,
 		"silenceDuration", silenceDuration,
 		"silenceAuthor", silenceAuthor,
 	)
@@ -116,7 +116,19 @@ func (a *alertmanagerClient) CreateSilence(alert *model.Alert, silenceAuthor, si
 	return silenceID, nil
 }
 
-func (a *alertmanagerClient) isSilenceExists(matchers types.Matchers) (string, bool, error) {
+// LinkToSilence creates a link to a silence.
+func (a *Client) LinkToSilence(silenceID string) string {
+	return fmt.Sprintf("%s/#/silences/%s", a.Config.AlertManager.URL, silenceID)
+}
+
+// ListAlerts returns a list of alerts or an error.
+func (a *Client) ListAlerts(f *Filter) ([]*client.ExtendedAlert, error) {
+	return a.alertAPIClient.List(
+		context.TODO(), f.toString(), f.Receiver, f.IsSilenced, f.IsInhibited, f.IsActive, f.IsUnprocessed,
+	)
+}
+
+func (a *Client) isSilenceExists(matchers types.Matchers) (string, bool, error) {
 	mathersNoAuthor := matchersWithoutAuthor(matchers)
 	silences, err := a.silenceAPIClient.List(context.TODO(), mathersNoAuthor.String())
 	if err != nil {
@@ -130,56 +142,6 @@ func (a *alertmanagerClient) isSilenceExists(matchers types.Matchers) (string, b
 	return "", false, nil
 }
 
-func (a *alertmanagerClient) LinkToSilence(silenceID string) string {
-	return fmt.Sprintf("%s/#/silences/%s", a.Config.AlertManager.URL, silenceID)
-}
-
-func (a *alertmanagerClient) AcknowledgeAlert(alert *model.Alert, acknowledgedBy string) ([]*client.ExtendedAlert, error) {
-	alertList, err := a.findAlerts(alert)
-	if err != nil {
-		return nil, err
-	}
-
-	for idx, a := range alertList {
-		ack, ok := a.Annotations[AcknowledgedByLabel]
-		if ok && !strings.Contains(string(ack), acknowledgedBy) {
-			acknowledgedBy = fmt.Sprintf("%s, %s", ack, acknowledgedBy)
-		}
-		alertList[idx].Annotations[AcknowledgedByLabel] = client.LabelValue(acknowledgedBy)
-	}
-	return alertList, nil
-}
-
-func (a *alertmanagerClient) ListAlerts(filter map[string]string) ([]*client.ExtendedAlert, error) {
-	var filterList []string
-	for k, v := range filter {
-		filterList = append(filterList, fmt.Sprintf(`%s="%s"`, k, v))
-	}
-	return a.alertAPIClient.List(
-		context.TODO(), strings.Join(filterList, ","), "", true, true, true, false,
-	)
-}
-
-func (a *alertmanagerClient) findAlerts(alert *model.Alert) ([]*client.ExtendedAlert, error) {
-	var filterList []string
-	for labelName, labelValue := range alert.Labels {
-		filterList = append(filterList, fmt.Sprintf(`%s="%s"`, labelName, labelValue))
-	}
-
-	extendedAlertList, err := a.alertAPIClient.List(
-		context.TODO(), strings.Join(filterList, ","), "", true, true, true, false,
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(extendedAlertList) == 0 {
-		return nil, fmt.Errorf("no alert(s) with name '%v' found", alert.Labels[model.AlertNameLabel])
-	}
-
-	return extendedAlertList, nil
-}
-
 func matchersWithoutAuthor(matchers types.Matchers) types.Matchers {
 	matcherWithoutAuthor := make([]*types.Matcher, 0)
 	for _, m := range matchers {
@@ -190,7 +152,7 @@ func matchersWithoutAuthor(matchers types.Matchers) types.Matchers {
 	return matcherWithoutAuthor
 }
 
-func matchersFromAlert(alert *model.Alert) types.Matchers {
+func matchersFromAlert(alert *client.ExtendedAlert) types.Matchers {
 	matchers := make([]*types.Matcher, 0)
 	for labelKey, labelValue := range alert.Labels {
 		m := &types.Matcher{

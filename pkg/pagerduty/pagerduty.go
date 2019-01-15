@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -26,9 +26,9 @@ import (
 	"github.com/PagerDuty/go-pagerduty"
 	"github.com/pkg/errors"
 	"github.com/prometheus/alertmanager/client"
+	"github.com/sapcc/stargate/pkg/alert"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
-	"github.com/sapcc/stargate/pkg/util"
 )
 
 // StatusAcknowledged ...
@@ -89,13 +89,13 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 }
 
 // findIncident finds triggered incidents in pagerduty by alertname, region
-func (p *Client) findIncidentByAlert(alert *client.ExtendedAlert) (*pagerduty.Incident, error) {
-	regionName, err := util.GetRegionFromExtendedAlert(alert)
+func (p *Client) findIncidentByAlert(extendedAlert *client.ExtendedAlert) (*pagerduty.Incident, error) {
+	regionName, err := alert.GetRegionFromExtendedAlert(extendedAlert)
 	if err != nil {
 		return nil, err
 	}
 
-	alertName, err := util.GetAlertnameFromExtendedAlert(alert)
+	alertName, err := alert.GetAlertnameFromExtendedAlert(extendedAlert)
 	if err != nil {
 		return nil, err
 	}

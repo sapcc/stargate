@@ -1,6 +1,6 @@
 /*******************************************************************************
 *
-* Copyright 2018 SAP SE
+* Copyright 2019 SAP SE
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -22,11 +22,11 @@ package store
 import (
 	"os"
 	"path"
+	"sync"
 	"testing"
 	"time"
 
-	alertmanager_store "github.com/prometheus/alertmanager/store"
-	"github.com/prometheus/alertmanager/types"
+	"github.com/prometheus/alertmanager/client"
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/log"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +46,7 @@ func TestPersistAlertStore(t *testing.T) {
 	require.NoError(t, err, "creating an alert store must not raise an error")
 	require.NotZero(t, alertStore.Count(), "the alert store must not be empty for this test")
 
-	size, err := persister.Store(alertStore)
+	size, err := persister.Store(alertStore.s)
 	assert.NoError(t, err, "persisting an alert store should not raise an error")
 	assert.NotZero(t, size, "the size of the persisted alert store should not be 0")
 }
@@ -55,21 +55,22 @@ func TestLoadAlertStore(t *testing.T) {
 	persister, err := newPersister()
 	require.NoError(t, err, "creating a persister must not raise an error")
 
-	alertStore, err := persister.Load()
+	alertStoreMap, err := persister.Load()
 	assert.NoError(t, err, "loading an alert store should not raise an error")
-	assert.NotZero(t, alertStore.Count(), "the alert store must not be empty for this test")
+	assert.NotEmpty(t, alertStoreMap, "the alert store must not be empty for this test")
 
 }
 
-func newAlertStore() (*alertmanager_store.Alerts, error) {
-	alertList := []*types.Alert{
+func newAlertStore() (*AlertStore, error) {
+	alertList := []*client.ExtendedAlert{
 		{
-			Alert: model.Alert{
-				Labels: model.LabelSet{
+			Fingerprint: "05281b4f8947b35c",
+			Alert: client.Alert{
+				Labels: client.LabelSet{
 					model.AlertNameLabel: "quarkNase",
 					"Quark":              "Nase",
 				},
-				Annotations: model.LabelSet{
+				Annotations: client.LabelSet{
 					"acknowledgedBy": "user1",
 				},
 				StartsAt:     time.Now().UTC(),
@@ -78,12 +79,13 @@ func newAlertStore() (*alertmanager_store.Alerts, error) {
 			},
 		},
 		{
-			Alert: model.Alert{
-				Labels: model.LabelSet{
+			Fingerprint: "05281b4f8947b35d",
+			Alert: client.Alert{
+				Labels: client.LabelSet{
 					model.AlertNameLabel: "Boogieman",
 					"Boogie":             "Man",
 				},
-				Annotations: model.LabelSet{
+				Annotations: client.LabelSet{
 					"acknowledgedBy": "user2",
 				},
 				StartsAt:     time.Now().UTC(),
@@ -93,7 +95,14 @@ func newAlertStore() (*alertmanager_store.Alerts, error) {
 		},
 	}
 
-	store := alertmanager_store.NewAlerts(5 * time.Minute)
+	store := &AlertStore{
+		s:               map[model.Fingerprint]*client.ExtendedAlert{},
+		alertCache:      map[model.Fingerprint]*client.ExtendedAlert{},
+		logger:          log.NewLogger(),
+		mtx:             sync.RWMutex{},
+		recheckInterval: 5 * time.Minute,
+	}
+
 	for _, alert := range alertList {
 		if err := store.Set(alert); err != nil {
 			return nil, err
@@ -102,12 +111,11 @@ func newAlertStore() (*alertmanager_store.Alerts, error) {
 	return store, nil
 }
 
-func newPersister() (*filePersister, error) {
+func newPersister() (*FilePersister, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
 	}
-
 	return NewFilePersister(
 		path.Join(pwd, PathFixtures, FileNamePersistetAlertStore),
 		log.NewLogger(),
