@@ -110,6 +110,7 @@ func (a *AlertStore) Get(fp model.Fingerprint) (*client.ExtendedAlert, error) {
 	if !ok {
 		return nil, ErrNotFound
 	}
+	a.logger.LogDebug("getting alert from store", "fingerprint", fp.String())
 	return alert, nil
 }
 
@@ -132,6 +133,7 @@ func (a *AlertStore) Set(alert *client.ExtendedAlert) error {
 		return err
 	}
 	a.s[fp] = alert
+	a.logger.LogDebug("adding alert to store", "fingerprint", fp.String())
 	return nil
 }
 
@@ -162,6 +164,7 @@ func (a *AlertStore) Delete(fp model.Fingerprint) error {
 	defer a.mtx.Unlock()
 
 	delete(a.s, fp)
+	a.logger.LogDebug("deleting alert from store", "fingerprint", fp.String())
 	return nil
 }
 
@@ -212,6 +215,7 @@ func (a *AlertStore) garbageCollect() {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
+	a.logger.LogDebug("running garbage collection")
 	for fp, alert := range a.s {
 		endsAt, isResolved := a.isAlertStillFiring(alert)
 		if isResolved {
@@ -243,18 +247,19 @@ func (a *AlertStore) isAlertStillFiring(alert *client.ExtendedAlert) (time.Time,
 }
 
 func (a *AlertStore) syncWithAlertmanager() error {
+	a.logger.LogInfo("syncing with alertmanager")
 	filter := alertmanager.NewDefaultFilter()
 	filter.IsSilenced = true
 	alertList, err := a.alertmanagerClient.ListAlerts(filter)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "syncing with alertmanager failed")
 	}
 
 	m := make(map[model.Fingerprint]*client.ExtendedAlert)
 	for _, alert := range alertList {
 		fp, err := model.FingerprintFromString(alert.Fingerprint)
 		if err != nil {
-			a.logger.LogError("failed to create fingerprint for alert", err)
+			a.logger.LogError("failed to create fingerprint for alert. ignoring", err)
 			continue
 		}
 		m[fp] = alert
