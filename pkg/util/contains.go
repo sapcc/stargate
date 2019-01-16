@@ -19,7 +19,9 @@
 
 package util
 
-// StringSliceContains checks whether a string slice contains a string
+import "github.com/prometheus/alertmanager/client"
+
+// StringSliceContains checks whether a string slice contains a string.
 func StringSliceContains(stringSlice []string, searchString string) bool {
 	for _, s := range stringSlice {
 		if s == searchString {
@@ -29,7 +31,7 @@ func StringSliceContains(stringSlice []string, searchString string) bool {
 	return false
 }
 
-// StringMapContains check whether a map[string]string contains a string
+// StringMapContains checks whether a map[string]string contains a string.
 func StringMapContains(stringMap map[string]string, str string) bool {
 	for _, s := range stringMap {
 		if s == str {
@@ -37,4 +39,15 @@ func StringMapContains(stringMap map[string]string, str string) bool {
 		}
 	}
 	return false
+}
+
+// LabelSetContains checks whether a LabelSet contains another LabelSet
+func LabelSetContains(labelSet client.LabelSet, subLabelSet client.LabelSet) bool {
+	for labelName, labelValue := range subLabelSet {
+		val, ok := labelSet[labelName]
+		if !ok || labelValue != val {
+			return false
+		}
+	}
+	return true
 }

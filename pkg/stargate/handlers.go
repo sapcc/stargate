@@ -99,9 +99,8 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 			case slack.Reaction.Acknowledge:
 				err := s.alertStore.AcknowledgeAlert(slackAlert, userName)
 				if err != nil {
-					s.logger.LogError("failed to acknowledge alert", err, "labels", slackAlert.Labels)
+					s.logger.LogError("failed to acknowledge alert", err, "labels", alert.ClientLabelSetToString(slackAlert.Labels))
 					metrics.FailedOperationsTotal.WithLabelValues("acknowledge").Inc()
-					return
 				}
 
 				if err := s.pagerdutyClient.AcknowledgeIncident(slackAlert, userEmail); err != nil {
@@ -190,10 +189,9 @@ func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if userName != s.Config.Slack.UserName || password != s.Config.Slack.GetValidationToken() {
-		//json.NewEncoder(w).Encode(api.Error{Code: http.StatusUnauthorized, Message: "Unauthorized"})
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusUnauthorized, Message: "Unauthorized"})
 		s.logger.LogInfo("unauthorized request", "handler", "listAlerts")
-		//TODO
-		// return
+		return
 	}
 
 	// get a fresh list of alerts from the alertmanager

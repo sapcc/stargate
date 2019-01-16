@@ -31,6 +31,7 @@ import (
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/metrics"
+	"github.com/sapcc/stargate/pkg/util"
 )
 
 var (
@@ -166,14 +167,9 @@ func (a *AlertStore) Delete(fp model.Fingerprint) error {
 
 // AcknowledgeAlert acknowledges an alert and adds it to the AlertStore.
 func (a *AlertStore) AcknowledgeAlert(al *client.ExtendedAlert, acknowledgedBy string) error {
-	fp, err := model.FingerprintFromString(al.Fingerprint)
+	extendedAlert, err := a.findAlertInCache(al.Labels)
 	if err != nil {
-		return err
-	}
-
-	extendedAlert, err := a.findAlertInAlertCache(fp)
-	if err != nil {
-		return err
+		return errors.Wrapf(err, "could not find alert in cache with labels '%s'", alert.ClientLabelSetToString(al.Labels))
 	}
 
 	ackedAlert := alert.AcknowledgeAlert(extendedAlert, acknowledgedBy)
@@ -268,20 +264,26 @@ func (a *AlertStore) syncWithAlertmanager() error {
 	return nil
 }
 
-func (a *AlertStore) findAlertInAlertCache(fp model.Fingerprint) (*client.ExtendedAlert, error) {
-	extendedAlert, ok := a.alertCache[fp]
-	if !ok {
-		// if alert wasn't found. try to sync once.
-		err := a.syncWithAlertmanager()
-		if err != nil {
-			return nil, err
-		}
-		extendedAlert, ok = a.alertCache[fp]
-		if !ok {
-			return nil, ErrNotFound
+func (a *AlertStore) findAlertInCache(labelSet client.LabelSet) (*client.ExtendedAlert, error) {
+	for _, al := range a.alertCache {
+		if util.LabelSetContains(al.Labels, labelSet) {
+			return al, nil
 		}
 	}
-	return extendedAlert, nil
+
+	// if we get here the alert wasn't found. sync alerts and try again.
+	err := a.syncWithAlertmanager()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, al := range a.alertCache {
+		if util.LabelSetContains(al.Labels, labelSet) {
+			return al, nil
+		}
+	}
+
+	return nil, ErrNotFound
 }
 
 // IsErrNotFound checks whether the error is an ErrNotFound

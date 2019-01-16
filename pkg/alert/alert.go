@@ -137,13 +137,13 @@ func IsNoCriticalOrWarningAlerts(alertsBySeverity map[string][]*client.ExtendedA
 	return false
 }
 
-// ToModelLabelSet converts a client.LabelSet to a model.LabelSet
-func ToModelLabelSet(labelSet client.LabelSet) model.LabelSet {
-	modelLabelSet := model.LabelSet{}
-	for labelName, labelValue := range labelSet {
-		modelLabelSet[model.LabelName(labelName)] = model.LabelValue(labelValue)
+// ClientLabelSetToString converts a client.LabelSet to a string
+func ClientLabelSetToString(labelSet client.LabelSet) string {
+	var lblString string
+	for k, v := range labelSet {
+		lblString += fmt.Sprintf("%v=%v ", k, v)
 	}
-	return modelLabelSet
+	return lblString
 }
 
 // MergeAnnotations merges annotations for mult. alerts.
