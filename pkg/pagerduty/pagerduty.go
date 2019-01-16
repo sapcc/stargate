@@ -121,7 +121,7 @@ func (p *Client) findIncidentByAlert(extendedAlert *client.ExtendedAlert) (*page
 			continue
 		}
 
-		p.logger.LogDebug("found incident", "name", foundAlertname, "region", foundRegion)
+		//p.logger.LogDebug("found incident", "name", foundAlertname, "region", foundRegion)
 
 		if foundAlertname == alertName && foundRegion == regionName {
 			return &incident, nil

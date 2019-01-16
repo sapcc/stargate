@@ -1,0 +1,17 @@
+kind: PersistentVolumeClaim
+apiVersion: v1
+
+metadata:
+  name: {{ include "stargate.fullname" . }}
+  labels:
+    app: {{ include "stargate.name" . }}
+    chart: {{ include "stargate.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
