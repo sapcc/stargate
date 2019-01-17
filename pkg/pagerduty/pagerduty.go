@@ -42,7 +42,7 @@ type Client struct {
 	logger          log.Logger
 	config          config.Config
 	pagerdutyClient *pagerduty.Client
-	defaultUser *pagerduty.User
+	defaultUser     *pagerduty.User
 }
 
 // NewClient creates a new pagerduty client
@@ -61,7 +61,7 @@ func NewClient(config config.Config, logger log.Logger) *Client {
 
 	// fallback to default user.
 	defaultUserEmail := client.config.Pagerduty.DefaultUserEmail
-	if client.defaultUser == nil && defaultUserEmail != ""{
+	if client.defaultUser == nil && defaultUserEmail != "" {
 		defaultUser, err := client.findUserIDByEmail(defaultUserEmail)
 		if err != nil {
 			logger.LogError("unable to get fallback user", err)
@@ -169,9 +169,9 @@ func (p *Client) addActualAcknowledgerAsNoteToIncident(incident *pagerduty.Incid
 	note := pagerduty.IncidentNote{
 		Content: fmt.Sprintf("Incident was acknowledged on behalf of %s. time: %s", actualAcknowledger, time.Now().UTC().String()),
 		User: pagerduty.APIObject{
-			ID: p.defaultUser.ID,
-			Type: TypeUserReference,
-			Self: p.defaultUser.Self,
+			ID:      p.defaultUser.ID,
+			Type:    TypeUserReference,
+			Self:    p.defaultUser.Self,
 			HTMLURL: p.defaultUser.HTMLURL,
 			Summary: p.defaultUser.Summary,
 		},
