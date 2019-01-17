@@ -129,13 +129,13 @@ func (a *Client) ListAlerts(f *Filter) ([]*client.ExtendedAlert, error) {
 }
 
 func (a *Client) isSilenceExists(matchers types.Matchers) (string, bool, error) {
-	mathersNoAuthor := matchersWithoutAuthor(matchers)
-	silences, err := a.silenceAPIClient.List(context.TODO(), mathersNoAuthor.String())
+	matchersNoAuthor := matchersWithoutAuthor(matchers)
+	silences, err := a.silenceAPIClient.List(context.TODO(), matchersNoAuthor.String())
 	if err != nil {
 		return "", false, err
 	}
 	for _, s := range silences {
-		if matchersWithoutAuthor(s.Matchers).Equal(mathersNoAuthor) {
+		if matchersWithoutAuthor(s.Matchers).Equal(matchersNoAuthor) {
 			return s.ID, true, nil
 		}
 	}
