@@ -20,7 +20,6 @@
 package store
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -266,7 +265,6 @@ func (a *AlertStore) syncWithAlertmanager() error {
 		m[fp] = alert
 	}
 	a.alertCache = m
-	a.logger.LogDebug("alert cache content", "cache", fmt.Sprintf("%#v", m))
 	return nil
 }
 
