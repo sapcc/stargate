@@ -42,21 +42,34 @@ type Client struct {
 	logger          log.Logger
 	config          config.Config
 	pagerdutyClient *pagerduty.Client
+	defaultUser *pagerduty.User
 }
 
 // NewClient creates a new pagerduty client
 func NewClient(config config.Config, logger log.Logger) *Client {
 	logger = log.NewLoggerWith(logger, "component", "pagerduty")
 
-	client := pagerduty.NewClient(config.Pagerduty.AuthToken)
-	if client == nil {
+	pagerdutyClient := pagerduty.NewClient(config.Pagerduty.AuthToken)
+	if pagerdutyClient == nil {
 		logger.LogFatal("unable to create pagerduty client")
 	}
-	return &Client{
+	client := &Client{
 		logger:          logger,
 		config:          config,
-		pagerdutyClient: client,
+		pagerdutyClient: pagerdutyClient,
 	}
+
+	// fallback to default user.
+	defaultUserEmail := client.config.Pagerduty.DefaultUserEmail
+	if client.defaultUser == nil && defaultUserEmail != ""{
+		defaultUser, err := client.findUserIDByEmail(defaultUserEmail)
+		if err != nil {
+			logger.LogError("unable to get fallback user", err)
+		}
+		client.defaultUser = defaultUser
+	}
+
+	return client
 }
 
 // AcknowledgeIncident acknowledges a currently firing incident
@@ -65,14 +78,21 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 		return fmt.Errorf("cannot acknowledge alert '%s' without a mail address", alert.Alert)
 	}
 
-	user, err := p.findUserIDByEmail(userEmail)
+	incident, err := p.findIncidentByAlert(alert)
 	if err != nil {
 		return err
 	}
 
-	incident, err := p.findIncidentByAlert(alert)
+	user, err := p.findUserIDByEmail(userEmail)
 	if err != nil {
-		return err
+		p.logger.LogError("pagerduty user not found. falling back to default user", err)
+		if p.defaultUser == nil {
+			return err
+		}
+		user = p.defaultUser
+		if err := p.addActualAcknowledgerAsNoteToIncident(incident, userEmail); err != nil {
+			p.logger.LogError("failed to add note to incident", err, "incidentID", incident.ID)
+		}
 	}
 
 	ackedIncident := acknowledgeIncident(incident, user)
@@ -143,6 +163,21 @@ func (p *Client) findUserIDByEmail(userEmail string) (*pagerduty.User, error) {
 	}
 
 	return nil, fmt.Errorf("no pagerduty user with email '%s' found", userEmail)
+}
+
+func (p *Client) addActualAcknowledgerAsNoteToIncident(incident *pagerduty.Incident, actualAcknowledger string) error {
+	note := pagerduty.IncidentNote{
+		Content: fmt.Sprintf("Incident was acknowledged on behalf of %s. time: %s", actualAcknowledger, time.Now().UTC().String()),
+		User: pagerduty.APIObject{
+			ID: p.defaultUser.ID,
+			Type: TypeUserReference,
+			Self: p.defaultUser.Self,
+			HTMLURL: p.defaultUser.HTMLURL,
+			Summary: p.defaultUser.Summary,
+		},
+	}
+
+	return p.pagerdutyClient.CreateIncidentNote(incident.ID, note)
 }
 
 func acknowledgeIncident(incident *pagerduty.Incident, user *pagerduty.User) pagerduty.Incident {

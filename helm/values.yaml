@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   pullPolicy: IfNotPresent
   repository: sapcc/stargate
-  tag: fd26ad05
+  tag: 77b281dc
 
 # the port used to expose the stargate API
 port: 8080
@@ -43,6 +43,15 @@ slack:
   # Slack command to trigger actions
   # default: /stargate
   # command:
+
+# Pagerduty configuration
+pagerduty:
+  # auth_token required for Pagderduty API
+  auth_token: DEFINED-IN-SECRETS
+
+  # default_user_email is used to acknowledge incidents if the actual acknowledger is not registered in Pagerduty.
+  # acknowledging incidents requires the email address of a valid user associated with the account making the request.
+  default_user_email: DEFINED-IN-SECRETS
 
 # Prometheus Alertmanager configuration
 alertmanager:

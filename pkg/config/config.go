@@ -49,40 +49,43 @@ type alertmanagerConfig struct {
 type slackConfig struct {
 	AuthorizedGroups []string `yaml:"authorized_groups"`
 
-	// AccessToken to authenticate the stargate to messenger
+	// AccessToken to authenticate the stargate to messenger.
 	AccessToken string `yaml:"access_token"`
 
-	// BotUserAccessToken is the access token used by the bot
+	// BotUserAccessToken is the access token used by the bot.
 	BotUserAccessToken string `yaml:"bot_user_access_token"`
 
-	// SigningSecret to verify slack messages
+	// SigningSecret to verify slack messages.
 	SigningSecret string `yaml:"signing_secret"`
 
-	// VerificationToken to verify slack messages
+	// VerificationToken to verify slack messages.
 	VerificationToken string `yaml:"verification_token"`
 
-	// UserName for slack messages
+	// UserName for slack messages.
 	UserName string `yaml:"user_name"`
 
-	// UserIcon for slack messages
+	// UserIcon for slack messages.
 	UserIcon string `yaml:"user_icon"`
 
-	// Command to trigger actions
+	// Command to trigger actions.
 	Command string `yaml:"command"`
 
-	// RecheckInterval for user group memberships
+	// RecheckInterval for user group memberships.
 	RecheckInterval time.Duration `yaml:"recheck_interval"`
 
-	// IsDisableRTM allows disabeling the slack RTM (real time messaging)
+	// IsDisableRTM allows disabeling the slack RTM (real time messaging).
 	IsDisableRTM bool `yaml:"-"`
 }
 
 type pagerdutyConfig struct {
-	// AuthToken used to authenticate with pagerduty
+	// AuthToken used to authenticate with pagerduty.
 	AuthToken string `yaml:"auth_token"`
+
+	// DefaultUserEmail is used to acknowledge incidents if no Pagerduty user is found.
+	DefaultUserEmail string `yaml:"default_user_email"`
 }
 
-// NewConfig reads the configuration from the given filePath
+// NewConfig reads the configuration from the given filePath.
 func NewConfig(opts Options, logger log.Logger) (cfg Config, err error) {
 	if opts.ConfigFilePath == "" {
 		return cfg, errors.New("path to configuration file not provided")
@@ -148,7 +151,7 @@ func (a *alertmanagerConfig) validate() error {
 	return nil
 }
 
-// GetValidationToken returns either the signingSecret or verificationToken in order to validate slack messenger
+// GetValidationToken returns either the signingSecret or verificationToken in order to validate slack messenger.
 func (s *slackConfig) GetValidationToken() string {
 	if s.SigningSecret != "" {
 		return s.SigningSecret
