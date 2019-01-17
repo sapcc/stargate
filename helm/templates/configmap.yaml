@@ -15,7 +15,7 @@ data:
       url: {{ required "missing alertmanager url" .Values.alertmanager.url }}
     pagerduty:
       auth_token: {{ .Values.pagerduty.auth_token | quote }}
-      default_user_email: {{ .Values.default_user_email | quote }}
+      default_user_email: {{ .Values.pagerduty.default_user_email | quote }}
     slack:
       user_name: {{ .Values.slack.user_name | quote }}
       {{- if .Values.slack.user_icon }}
