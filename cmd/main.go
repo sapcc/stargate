@@ -55,11 +55,11 @@ func main() {
 	stop := make(chan struct{})
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
-	logger := log.NewLogger()
+	logger := log.NewLogger(opts.IsDebug)
 
 	wg := &sync.WaitGroup{}
 
-	go stargate.New(opts).Run(wg, stop)
+	go stargate.New(opts, logger).Run(wg, stop)
 	go metrics.Serve(opts, logger)
 
 	<-sigs // Wait for signals (this hangs until a signal arrives)

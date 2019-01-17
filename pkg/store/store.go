@@ -247,7 +247,7 @@ func (a *AlertStore) isAlertStillFiring(alert *client.ExtendedAlert) (time.Time,
 }
 
 func (a *AlertStore) syncWithAlertmanager() error {
-	a.logger.LogInfo("syncing with alertmanager")
+	a.logger.LogDebug("syncing with alertmanager")
 	filter := alertmanager.NewDefaultFilter()
 	filter.IsSilenced = true
 	alertList, err := a.alertmanagerClient.ListAlerts(filter)

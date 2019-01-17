@@ -32,10 +32,14 @@ type Logger struct {
 }
 
 // NewLogger creates a new Logger
-func NewLogger() Logger {
+func NewLogger(isDebug bool) Logger {
+	logLevel := level.AllowInfo()
+	if isDebug {
+		logLevel = level.AllowDebug()
+	}
 	var l log.Logger
 	l = log.NewLogfmtLogger(os.Stdout)
-	l = level.NewFilter(l, level.AllowAll())
+	l = level.NewFilter(l, logLevel)
 	l = log.With(l, "ts", log.DefaultTimestampUTC, "caller", log.Caller(4))
 
 	return Logger{

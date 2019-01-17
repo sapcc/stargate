@@ -99,12 +99,12 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 			case slack.Reaction.Acknowledge:
 				err := s.alertStore.AcknowledgeAlert(slackAlert, userName)
 				if err != nil {
-					s.logger.LogError("failed to acknowledge alert", err, "labels", alert.ClientLabelSetToString(slackAlert.Labels))
+					s.logger.LogError("failed to acknowledge alert", err, "component", "alertmanager", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
 					metrics.FailedOperationsTotal.WithLabelValues("acknowledge").Inc()
 				}
 
 				if err := s.pagerdutyClient.AcknowledgeIncident(slackAlert, userEmail); err != nil {
-					s.logger.LogError("failed to acknowledge incident", err)
+					s.logger.LogError("failed to acknowledge incident", err, "component", "pagerduty")
 					metrics.FailedOperationsTotal.WithLabelValues("acknowledge").Inc()
 				}
 
@@ -122,7 +122,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 				durationDays := util.TimeUntilNextMonday(time.Now().UTC())
 				silenceID, err := s.alertmanagerClient.CreateSilence(slackAlert, userName, slack.SilenceDefaultComment, util.DaysToHours(durationDays))
 				if err != nil {
-					s.logger.LogError("error creating silence", err)
+					s.logger.LogError("error creating silence", err, "component", "alertmanager")
 					metrics.FailedOperationsTotal.WithLabelValues("silence").Inc()
 				}
 
@@ -140,7 +140,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 				durationHours := util.DaysToHours(1)
 				silenceID, err := s.alertmanagerClient.CreateSilence(slackAlert, userName, slack.SilenceDefaultComment, durationHours)
 				if err != nil {
-					s.logger.LogError("error creating silence", err)
+					s.logger.LogError("error creating silence", err, "component", "alertmanager")
 					metrics.FailedOperationsTotal.WithLabelValues("silence").Inc()
 				}
 
@@ -158,7 +158,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 				durationHours := util.DaysToHours(31)
 				silenceID, err := s.alertmanagerClient.CreateSilence(slackAlert, userName, slack.SilenceDefaultComment, durationHours)
 				if err != nil {
-					s.logger.LogError("error creating silence", err)
+					s.logger.LogError("error creating silence", err, "component", "alertmanager")
 					metrics.FailedOperationsTotal.WithLabelValues("silence").Inc()
 				}
 

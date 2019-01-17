@@ -47,9 +47,7 @@ type Stargate struct {
 }
 
 // New creates a new stargate
-func New(opts config.Options) *Stargate {
-	logger := log.NewLogger()
-
+func New(opts config.Options, logger log.Logger) *Stargate {
 	cfg, err := config.NewConfig(opts, logger)
 	if err != nil {
 		logger.LogFatal("failed to load configuration", "err", err)

@@ -98,7 +98,7 @@ func newAlertStore() (*AlertStore, error) {
 	store := &AlertStore{
 		s:               map[model.Fingerprint]*client.ExtendedAlert{},
 		alertCache:      map[model.Fingerprint]*client.ExtendedAlert{},
-		logger:          log.NewLogger(),
+		logger:          log.NewLogger(true),
 		mtx:             sync.RWMutex{},
 		recheckInterval: 5 * time.Minute,
 	}
@@ -118,6 +118,6 @@ func newPersister() (*FilePersister, error) {
 	}
 	return NewFilePersister(
 		path.Join(pwd, PathFixtures, FileNamePersistetAlertStore),
-		log.NewLogger(),
+		log.NewLogger(true),
 	)
 }
