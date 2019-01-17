@@ -65,7 +65,7 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 		return fmt.Errorf("cannot acknowledge alert '%s' without a mail address", alert.Alert)
 	}
 
-	userID, err := p.findUserIDByEmail(userEmail)
+	user, err := p.findUserIDByEmail(userEmail)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 		return err
 	}
 
-	ackedIncident := acknowledgeIncident(incident, userID)
+	ackedIncident := acknowledgeIncident(incident, user)
 	p.logger.LogDebug("acknowledged incident",
 		"assignments", ackedIncident.Assignments,
 		"acknowledgements", ackedIncident.Acknowledgements,
@@ -130,37 +130,43 @@ func (p *Client) findIncidentByAlert(extendedAlert *client.ExtendedAlert) (*page
 	return nil, fmt.Errorf("no incident found for alert name: '%s', region: '%s'", alertName, regionName)
 }
 
-func (p *Client) findUserIDByEmail(userEmail string) (string, error) {
+func (p *Client) findUserIDByEmail(userEmail string) (*pagerduty.User, error) {
 	userList, err := p.pagerdutyClient.ListUsers(pagerduty.ListUsersOptions{})
 	if err != nil {
-		return "", errors.Wrapf(err, "failed to list pagerduty users")
+		return nil, errors.Wrapf(err, "failed to list pagerduty users")
 	}
 
 	for _, user := range userList.Users {
 		if user.Email == userEmail {
-			return user.ID, nil
+			return &user, nil
 		}
 	}
 
-	return "", fmt.Errorf("no pagerduty user with email '%s' found", userEmail)
+	return nil, fmt.Errorf("no pagerduty user with email '%s' found", userEmail)
 }
 
-func acknowledgeIncident(incident *pagerduty.Incident, userID string) pagerduty.Incident {
+func acknowledgeIncident(incident *pagerduty.Incident, user *pagerduty.User) pagerduty.Incident {
 	timeNowUTCString := time.Now().UTC().String()
 	ackedIncident := *incident
 
 	ackedIncident.Acknowledgements = append(ackedIncident.Acknowledgements, pagerduty.Acknowledgement{
 		At: timeNowUTCString,
 		Acknowledger: pagerduty.APIObject{
-			Type: TypeUserReference,
-			ID:   userID,
+			Type:    TypeUserReference,
+			ID:      user.ID,
+			Summary: user.Summary,
+			HTMLURL: user.HTMLURL,
+			Self:    user.Self,
 		},
 	})
 	ackedIncident.Assignments = append(ackedIncident.Assignments, pagerduty.Assignment{
 		At: timeNowUTCString,
 		Assignee: pagerduty.APIObject{
-			Type: TypeUserReference,
-			ID:   userID,
+			Type:    TypeUserReference,
+			ID:      user.ID,
+			Summary: user.Summary,
+			HTMLURL: user.HTMLURL,
+			Self:    user.Self,
 		},
 	})
 	ackedIncident.Status = StatusAcknowledged
