@@ -136,9 +136,8 @@ func (a *AlertStore) AcknowledgeAndSetMultiple(extendedAlertList []*client.Exten
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	ackedAlertList := alert_util.AcknowledgeAlerts(extendedAlertList, acknowledgedBy)
-	for _, ackedAlert := range ackedAlertList {
-		fp, err := model.FingerprintFromString(ackedAlert.Fingerprint)
+	for _, al := range extendedAlertList {
+		fp, err := model.FingerprintFromString(al.Fingerprint)
 		if err != nil {
 			a.logger.LogError("failed to create fingerprint for alert. ignoring", err)
 			continue
@@ -146,14 +145,11 @@ func (a *AlertStore) AcknowledgeAndSetMultiple(extendedAlertList []*client.Exten
 
 		foundAlert, ok := a.s[fp]
 		if !ok {
-			a.s[fp] = ackedAlert
+			a.s[fp] = alert_util.AcknowledgeAlert(foundAlert, acknowledgedBy)
 			a.logger.LogDebug("adding alert to store", "fingerprint", fp.String())
 			continue
 		}
-
-		// The alert was found in the store, which means it was acknowledged previously.
-		// So we need to append the new acknowledger to the list.
-		a.s[fp] = alert_util.AcknowledgeAlert(foundAlert, acknowledgedBy)
+		a.s[fp] = alert_util.AcknowledgeAlert(al, acknowledgedBy)
 	}
 	return nil
 }
