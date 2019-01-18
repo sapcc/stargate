@@ -123,6 +123,13 @@ func (a *Client) LinkToSilence(silenceID string) string {
 
 // ListAlerts returns a list of alerts or an error.
 func (a *Client) ListAlerts(f *Filter) ([]*client.ExtendedAlert, error) {
+	a.logger.LogDebug("listing alerts",
+		"isSilenced", f.IsSilenced,
+		"isInhibited", f.IsInhibited,
+		"isActive", f.IsActive,
+		"isUnprocessed", f.IsUnprocessed,
+		"filter", f.toString(),
+	)
 	return a.alertAPIClient.List(
 		context.TODO(), f.toString(), f.Receiver, f.IsSilenced, f.IsInhibited, f.IsActive, f.IsUnprocessed,
 	)

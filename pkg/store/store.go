@@ -144,7 +144,7 @@ func (a *AlertStore) AcknowledgeAndSetMultiple(extendedAlertList []*client.Exten
 		}
 
 		foundAlert, ok := a.s[fp]
-		if !ok {
+		if ok {
 			a.s[fp] = alert_util.AcknowledgeAlert(foundAlert, acknowledgedBy)
 			a.logger.LogDebug("adding alert to store", "fingerprint", fp.String())
 			continue

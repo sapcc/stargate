@@ -114,6 +114,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 					return
 				}
 
+				// Acknowledge the alerts matching the labels found in the slack message.
 				err = s.alertStore.AcknowledgeAndSetMultiple(alertList, userName)
 				if err != nil {
 					s.logger.LogError("failed to acknowledge alert", err, "component", "alertmanager", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
