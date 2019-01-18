@@ -39,6 +39,9 @@ const (
 )
 
 func TestPersistAlertStore(t *testing.T) {
+	err := rmPersistedAlertStoreIfExists()
+	require.NoError(t, err, "ensuring the alertstore file is removed must not raise an error")
+
 	persister, err := newPersister()
 	require.NoError(t, err, "creating a persister must not raise an error")
 
@@ -58,7 +61,9 @@ func TestLoadAlertStore(t *testing.T) {
 	alertStoreMap, err := persister.Load()
 	assert.NoError(t, err, "loading an alert store should not raise an error")
 	assert.NotEmpty(t, alertStoreMap, "the alert store must not be empty for this test")
-
+	assert.Len(t, alertStoreMap, 2, "the loaded alert store should have a length of 2")
+	assertMapContainsKey(t, alertStoreMap, "05281b4f8947b35c", "the loaded store should contain an alert with fingerprint '05281b4f8947b35c'")
+	assertMapContainsKey(t, alertStoreMap, "05281b4f8947b35d", "the loaded store should contain an alert with fingerprint '05281b4f8947b35d'")
 }
 
 func newAlertStore() (*AlertStore, error) {
@@ -97,7 +102,6 @@ func newAlertStore() (*AlertStore, error) {
 
 	store := &AlertStore{
 		s:               map[model.Fingerprint]*client.ExtendedAlert{},
-		alertCache:      map[model.Fingerprint]*client.ExtendedAlert{},
 		logger:          log.NewLogger(true),
 		mtx:             sync.RWMutex{},
 		recheckInterval: 5 * time.Minute,
@@ -116,8 +120,28 @@ func newPersister() (*FilePersister, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewFilePersister(
-		path.Join(pwd, PathFixtures, FileNamePersistetAlertStore),
-		log.NewLogger(true),
-	)
+
+	return NewFilePersister(path.Join(pwd, PathFixtures, FileNamePersistetAlertStore), log.NewLogger(true))
+}
+
+func rmPersistedAlertStoreIfExists() error {
+	pwd, err := os.Getwd()
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(path.Join(pwd, PathFixtures, FileNamePersistetAlertStore))
+	if err != nil && os.IsNotExist(err){
+		return nil
+	}
+	return err
+}
+
+func assertMapContainsKey(t *testing.T, m map[model.Fingerprint]*client.ExtendedAlert, containsFingerprintString string, errorText string) {
+	for fp := range m  {
+		if fp.String() == containsFingerprintString {
+			return
+		}
+	}
+	t.Errorf(errorText)
 }

@@ -26,12 +26,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/alertmanager/client"
 	"github.com/prometheus/common/model"
-	"github.com/sapcc/stargate/pkg/alert"
+	alert_util "github.com/sapcc/stargate/pkg/alert"
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
 	"github.com/sapcc/stargate/pkg/metrics"
-	"github.com/sapcc/stargate/pkg/util"
 )
 
 var (
@@ -49,13 +48,11 @@ type AlertStore struct {
 
 	// internal store with modified alert
 	s map[model.Fingerprint]*client.ExtendedAlert
-	// regularly cached alerts from alertmanager
-	alertCache map[model.Fingerprint]*client.ExtendedAlert
 }
 
 // NewAlertStore creates a new AlertStore.
 func NewAlertStore(cfg config.Config, recheckInterval time.Duration, persister *FilePersister, logger log.Logger) *AlertStore {
-	logger = log.NewLoggerWith(logger, "component", "alertStore")
+	logger = log.NewLoggerWith(logger, "component", "alertstore")
 
 	// load existing store or create a new
 	store, err := persister.Load()
@@ -71,7 +68,6 @@ func NewAlertStore(cfg config.Config, recheckInterval time.Duration, persister *
 		persister:          persister,
 		logger:             logger,
 		s:                  store,
-		alertCache:         make(map[model.Fingerprint]*client.ExtendedAlert),
 	}
 }
 
@@ -86,11 +82,8 @@ func (a *AlertStore) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
 		for {
 			select {
 			case <-ticker.C:
-				err := a.syncWithAlertmanager()
-				if err != nil {
-					a.logger.LogError("sync with alertmanager failed", err)
-				} else {
-					a.garbageCollect()
+				if err := a.garbageCollect(); err != nil {
+					a.logger.LogError("garbage collection failed", err)
 				}
 			case <-stopCh:
 				ticker.Stop()
@@ -124,16 +117,63 @@ func (a *AlertStore) GetFromFingerPrintString(fpString string) (*client.Extended
 }
 
 // Set adds an alert to the AlertStore.
-func (a *AlertStore) Set(alert *client.ExtendedAlert) error {
+func (a *AlertStore) Set(extendedAlert *client.ExtendedAlert) error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	fp, err := model.FingerprintFromString(alert.Fingerprint)
+	fp, err := model.FingerprintFromString(extendedAlert.Fingerprint)
 	if err != nil {
 		return err
 	}
-	a.s[fp] = alert
+	a.s[fp] = extendedAlert
 	a.logger.LogDebug("adding alert to store", "fingerprint", fp.String())
+	return nil
+}
+
+// AcknowledgeAndSetMultiple acknowledges and adds multiple alerts to the AlertStore.
+// If alert already present in AlertStore, additional acknowledgers will be appended.
+func (a *AlertStore) AcknowledgeAndSetMultiple(extendedAlertList []*client.ExtendedAlert, acknowledgedBy string) error {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	ackedAlertList := alert_util.AcknowledgeAlerts(extendedAlertList, acknowledgedBy)
+	for _, ackedAlert := range ackedAlertList {
+		fp, err := model.FingerprintFromString(ackedAlert.Fingerprint)
+		if err != nil {
+			a.logger.LogError("failed to create fingerprint for alert. ignoring", err)
+			continue
+		}
+
+		foundAlert, ok := a.s[fp]
+		if !ok {
+			a.s[fp] = ackedAlert
+			a.logger.LogDebug("adding alert to store", "fingerprint", fp.String())
+			continue
+		}
+
+		// The alert was found in the store, which means it was acknowledged previously.
+		// So we need to append the new acknowledger to the list.
+		a.s[fp] = alert_util.AcknowledgeAlert(foundAlert, acknowledgedBy)
+	}
+	return nil
+}
+
+// UpdateAlertEndsAt updates the EndsAt field of an alert in the AlertStore.
+func (a *AlertStore) UpdateAlertEndsAt(extendedAlert *client.ExtendedAlert) error {
+	a.mtx.Lock()
+	defer a.mtx.Unlock()
+
+	fp, err := model.FingerprintFromString(extendedAlert.Fingerprint)
+	if err != nil {
+		return err
+	}
+
+	_, ok := a.s[fp]
+	if !ok {
+		return ErrNotFound
+	}
+
+	a.s[fp].EndsAt = extendedAlert.EndsAt
 	return nil
 }
 
@@ -168,24 +208,6 @@ func (a *AlertStore) Delete(fp model.Fingerprint) error {
 	return nil
 }
 
-// AcknowledgeAlert acknowledges an alert and adds it to the AlertStore.
-func (a *AlertStore) AcknowledgeAlert(al *client.ExtendedAlert, acknowledgedBy string) error {
-	// find alert in cache. assuming it is resolved if not found.
-	var err error
-	extendedAlertList, err := a.findAlertsInCache(al.Labels)
-	if err != nil {
-		return errors.Wrapf(err, "could not find alert in cache with labels '%s'", alert.ClientLabelSetToString(al.Labels))
-	}
-
-	ackedAlertList := alert.AcknowledgeAlerts(extendedAlertList, acknowledgedBy)
-	for _, al := range ackedAlertList {
-		if err := a.Set(al); err != nil {
-			a.logger.LogError("failed to add alert to store", err, "fingerprint", al.Fingerprint)
-		}
-	}
-	return nil
-}
-
 // Snapshot creates a snapshot of the current store
 func (a *AlertStore) Snapshot() error {
 	var snapshotSize int64
@@ -207,99 +229,48 @@ func (a *AlertStore) Snapshot() error {
 	return nil
 }
 
-func (a *AlertStore) garbageCollect() {
+// garbageCollect cleans the AlertStore.
+// Alerts which are not present in the Alertmanager, or Alerts which expired will be removed.
+func (a *AlertStore) garbageCollect() error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
-	for fp, al := range a.s {
-		endsAt, isResolved := a.isAlertStillFiring(al)
-		alertname, err := alert.GetAlertnameFromExtendedAlert(al)
-		if err != nil {
-			alertname = fp.String()
-		}
-		if isResolved {
-			delete(a.s, fp)
-			a.logger.LogDebug("garbage collecting expired alert", "alert", alertname)
-		} else {
-			a.s[fp].EndsAt = endsAt
-			a.logger.LogDebug("updating alert expiry", "alert", alertname)
-		}
-	}
-}
-
-func (a *AlertStore) isAlertStillFiring(alert *client.ExtendedAlert) (time.Time, bool) {
-	isResolved := false
-	if time.Now().UTC().After(alert.EndsAt.UTC()) {
-		isResolved = true
-	}
-
-	fp, err := model.FingerprintFromString(alert.Fingerprint)
-	if err != nil {
-		a.logger.LogError("failed to create fingerprint for alert", err)
-		return alert.EndsAt.UTC(), false
-	}
-
-	cachedAlert, ok := a.alertCache[fp]
-	if !ok && isResolved {
-		// alert not found in alertmanager. must have been resolved.
-		return alert.EndsAt.UTC(), true
-	}
-	return cachedAlert.EndsAt.UTC(), false
-}
-
-func (a *AlertStore) syncWithAlertmanager() error {
 	filter := alertmanager.NewDefaultFilter()
 	filter.IsSilenced = true
-	alertList, err := a.alertmanagerClient.ListAlerts(filter)
+	currentAlertList, err := a.alertmanagerClient.ListAlerts(filter)
 	if err != nil {
-		return errors.Wrap(err, "syncing with alertmanager failed")
+		return errors.Wrapf(err, "failed to list alerts from alertmanager")
 	}
 
-	m := make(map[model.Fingerprint]*client.ExtendedAlert)
-	for _, alert := range alertList {
+	// Create a map for easier lookup of alerts by Fingerprint.
+	currentAlertMap := make(map[model.Fingerprint]*client.ExtendedAlert)
+	for _, alert := range currentAlertList {
 		fp, err := model.FingerprintFromString(alert.Fingerprint)
 		if err != nil {
 			a.logger.LogError("failed to create fingerprint for alert. ignoring", err)
 			continue
 		}
-		m[fp] = alert
+		currentAlertMap[fp] = alert
 	}
-	a.alertCache = m
+
+	for fp := range a.s {
+		al, ok := currentAlertMap[fp]
+		if !ok {
+			delete(a.s, fp)
+			a.logger.LogDebug("alert can no longer be found in alertmanager. deleting from store", "fingerprint", fp.String())
+			continue
+		} else if al.EndsAt.UTC().After(time.Now().UTC()) {
+			delete(a.s, fp)
+			a.logger.LogDebug("alert is expired. deleting alert from store", "fingerprint", fp.String())
+			continue
+		}
+		// Update the EndsAt of the alert in the AlertStore with the one found in the Alertmanager.
+		a.s[fp].EndsAt = currentAlertMap[fp].EndsAt
+	}
 	return nil
 }
 
-func (a *AlertStore) findAlertsInCache(labelSet client.LabelSet) ([]*client.ExtendedAlert, error) {
-	result := make([]*client.ExtendedAlert, 0)
-	for _, al := range a.alertCache {
-		if util.LabelSetContains(al.Labels, labelSet) {
-			result = append(result, al)
-		}
-	}
-	//found at least one alert
-	if len(result) > 0 {
-		return result, nil
-	}
-
-	// if we get here the alert wasn't found. sync alerts and try again.
-	err := a.syncWithAlertmanager()
-	if err != nil {
-		return nil, err
-	}
-
-	for _, al := range a.alertCache {
-		if util.LabelSetContains(al.Labels, labelSet) {
-			result = append(result, al)
-		}
-	}
-	//found at least one alert
-	if len(result) > 0 {
-		return result, nil
-	}
-
-	return nil, ErrNotFound
-}
-
-// IsErrNotFound checks whether the error is an ErrNotFound
+// IsErrNotFound checks whether the error is an ErrNotFound.
 func IsErrNotFound(err error) bool {
 	if err != nil {
 		return err.Error() == ErrNotFound.Error()

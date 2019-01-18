@@ -95,23 +95,9 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 		for _, action := range actionList {
 			switch action {
 
-			// Acknowledge an alert
+			// Acknowledge an alert.
 			case slack.Reaction.Acknowledge:
-				err := s.alertStore.AcknowledgeAlert(slackAlert, userName)
-				if err != nil {
-					s.logger.LogError("failed to acknowledge alert", err, "component", "alertmanager", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
-					metrics.FailedOperationsTotal.WithLabelValues("acknowledge").Inc()
-				} else {
-					s.logger.LogInfo("acknowledged alert", "component", "alertmanager", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
-				}
-
-				if err := s.pagerdutyClient.AcknowledgeIncident(slackAlert, userEmail); err != nil {
-					s.logger.LogError("failed to acknowledge incident", err, "component", "pagerduty")
-					metrics.FailedOperationsTotal.WithLabelValues("acknowledge").Inc()
-				} else {
-					s.logger.LogInfo("acknowledged alert", "component", "pagerduty", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
-				}
-
+				// At least post the message to slack.
 				s.slack.PostMessage(
 					slackMessageAction.Channel.Id,
 					fmt.Sprintf("Acknowledged by <@%s>", slackMessageAction.User.Id),
@@ -119,6 +105,30 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 				)
 				s.slack.AddReactionToMessage(slackMessageAction.Channel.Id, slackMessageAction.OriginalMessage.Timestamp, slack.AcknowledgeReactionEmoji)
 
+				// List all alerts that match the slack alert.
+				filter := alertmanager.NewDefaultFilter()
+				filter.WithAlertLabelsFilter(slackAlert.Labels)
+				alertList, err := s.alertmanagerClient.ListAlerts(filter)
+				if err != nil {
+					s.logger.LogError("failed to get list alerts from alertmanager", err)
+					return
+				}
+
+				err = s.alertStore.AcknowledgeAndSetMultiple(alertList, userName)
+				if err != nil {
+					s.logger.LogError("failed to acknowledge alert", err, "component", "alertmanager", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
+					metrics.FailedOperationsTotal.WithLabelValues("acknowledge").Inc()
+				} else {
+					// Don't return here on failure. We might be able to acknowledge in Pagerduty.
+					s.logger.LogInfo("acknowledged alert", "component", "alertmanager", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
+				}
+
+				if err := s.pagerdutyClient.AcknowledgeIncident(slackAlert, userEmail); err != nil {
+					s.logger.LogError("failed to acknowledge incident", err, "component", "pagerduty")
+					metrics.FailedOperationsTotal.WithLabelValues("acknowledge").Inc()
+					return
+				}
+				s.logger.LogInfo("acknowledged alert", "component", "pagerduty", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
 				metrics.SuccessfulOperationsTotal.WithLabelValues("acknowledge").Inc()
 
 				// Create a silence until next monday
@@ -128,6 +138,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 				if err != nil {
 					s.logger.LogError("error creating silence", err, "component", "alertmanager")
 					metrics.FailedOperationsTotal.WithLabelValues("silence").Inc()
+					return
 				}
 
 				s.slack.PostMessage(
@@ -146,6 +157,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 				if err != nil {
 					s.logger.LogError("error creating silence", err, "component", "alertmanager")
 					metrics.FailedOperationsTotal.WithLabelValues("silence").Inc()
+					return
 				}
 
 				s.slack.PostMessage(
@@ -164,6 +176,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 				if err != nil {
 					s.logger.LogError("error creating silence", err, "component", "alertmanager")
 					metrics.FailedOperationsTotal.WithLabelValues("silence").Inc()
+					return
 				}
 
 				s.slack.PostMessage(

@@ -81,23 +81,10 @@ func (p *FilePersister) Load() (map[model.Fingerprint]*client.ExtendedAlert, err
 	}
 	defer f.Close()
 
-	type alertList []*client.ExtendedAlert
-	var l = new(alertList)
 	d := gob.NewDecoder(f)
-	if err := d.Decode(l); err != nil {
-		return nil, err
-	}
-
-	store := make(map[model.Fingerprint]*client.ExtendedAlert)
-	for _, alert := range *l {
-		fp, err := model.FingerprintFromString(alert.Fingerprint)
-		if err != nil {
-			p.logger.LogError("error creating fingerprint for alert", err)
-			continue
-		}
-		store[fp] = alert
-	}
-	return store, nil
+	store := map[model.Fingerprint]*client.ExtendedAlert{}
+	err = d.Decode(&store)
+	return store, err
 }
 
 // Store attempts to save a store to a file.
@@ -113,13 +100,9 @@ func (p *FilePersister) Store(store map[model.Fingerprint]*client.ExtendedAlert)
 	}
 	defer f.Close()
 
-	storeList := make([]*client.ExtendedAlert, 0)
-	for _, alert := range store {
-		storeList = append(storeList, alert)
-	}
-
+	gob.Register(store)
 	e := gob.NewEncoder(f)
-	if err := e.Encode(storeList); err != nil {
+	if err := e.Encode(store); err != nil {
 		p.logger.LogError("error encoding alert store", err)
 	}
 

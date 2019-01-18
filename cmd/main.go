@@ -42,7 +42,7 @@ func init() {
 	pflag.IntVar(&opts.MetricPort, "metric-port", 9090, "Metric port")
 	pflag.StringVar(&opts.ConfigFilePath, "config-file", "/etc/stargate/config/stargate.yaml", "Path to the file containing the config")
 	pflag.StringVar(&opts.PersistenceFilePath, "persistence-file", "/data/alerts.dump", "Path to the file used to persist the alert store")
-	pflag.DurationVar(&opts.RecheckInterval, "recheck-interval", 10*time.Minute, "Garbage collections within the alert store happens that often")
+	pflag.DurationVar(&opts.RecheckInterval, "recheck-interval", 5*time.Minute, "Garbage collections within the alert store happens that often")
 	pflag.BoolVar(&opts.IsDebug, "debug", false, "Enable debug configuration and log level")
 	pflag.BoolVar(&opts.IsDisableSlackRTM, "disable-slack-rtm", false, "Disable Slack RTM (the bot)")
 }
