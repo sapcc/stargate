@@ -198,6 +198,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 
 // HandleListAlerts handles alert listing.
 func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 	// get a fresh list of alerts from the alertmanager
 	filter := alertmanager.NewFilterFromRequest(r)
 	alertList, err := s.alertmanagerClient.ListAlerts(filter)
@@ -221,6 +222,7 @@ func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(alertList)
 	if err != nil {
 		s.logger.LogError("error encoding alertList", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding list of alerts"})
 		return
 	}
@@ -229,10 +231,12 @@ func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
 
 // HandleListSilences handles silence listing.
 func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 	f := alertmanager.NewFilterFromRequest(r)
 	silenceList, err := s.alertmanagerClient.ListSilences(f)
 	if err != nil {
 		s.logger.LogError("error getting list of silences", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error getting list of silences"})
 		return
 	}
@@ -240,6 +244,7 @@ func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(silenceList)
 	if err != nil {
 		s.logger.LogError("error encoding silenceList", err)
+		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding list of silences"})
 	}
 	s.logger.LogDebug("responding to request", "handler", "listAlerts")
@@ -247,6 +252,7 @@ func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
 
 // HandleGetStatus handles the status.
 func (s *Stargate) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 	err := json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
 	if err != nil {
 		s.logger.LogError("error encoding status", err)
