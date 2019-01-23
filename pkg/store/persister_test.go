@@ -131,14 +131,14 @@ func rmPersistedAlertStoreIfExists() error {
 	}
 
 	err = os.Remove(path.Join(pwd, PathFixtures, FileNamePersistetAlertStore))
-	if err != nil && os.IsNotExist(err){
+	if err != nil && os.IsNotExist(err) {
 		return nil
 	}
 	return err
 }
 
 func assertMapContainsKey(t *testing.T, m map[model.Fingerprint]*client.ExtendedAlert, containsFingerprintString string, errorText string) {
-	for fp := range m  {
+	for fp := range m {
 		if fp.String() == containsFingerprintString {
 			return
 		}

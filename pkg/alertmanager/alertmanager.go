@@ -135,6 +135,12 @@ func (a *Client) ListAlerts(f *Filter) ([]*client.ExtendedAlert, error) {
 	)
 }
 
+// ListSilences returns a list of silences or an error.
+func (a *Client) ListSilences(f *Filter) ([]*types.Silence, error) {
+	a.logger.LogDebug("listing silences", "filter", f.toString())
+	return a.silenceAPIClient.List(context.TODO(), f.toString())
+}
+
 func (a *Client) isSilenceExists(matchers types.Matchers) (string, bool, error) {
 	matchersNoAuthor := matchersWithoutAuthor(matchers)
 	silences, err := a.silenceAPIClient.List(context.TODO(), matchersNoAuthor.String())

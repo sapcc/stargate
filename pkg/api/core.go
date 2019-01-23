@@ -35,6 +35,7 @@ import (
 // API is the Stargate API struct
 type API struct {
 	*mux.Router
+	*authMiddleware
 	logger log.Logger
 
 	Config config.Config
@@ -42,11 +43,10 @@ type API struct {
 
 // NewAPI creates a new API based on the configuration
 func NewAPI(config config.Config, logger log.Logger) *API {
-	logger = log.NewLoggerWith(logger, "component", "api")
-
 	api := &API{
 		mux.NewRouter().StrictSlash(false),
-		logger,
+		newAuthMiddleware(config, logger),
+		log.NewLoggerWith(logger, "component", "api"),
 		config,
 	}
 
@@ -62,6 +62,11 @@ func NewAPI(config config.Config, logger log.Logger) *API {
 // AddRouteV1 adds a new route to the v1 API
 func (a *API) AddRouteV1(method, path string, handleFunc func(w http.ResponseWriter, r *http.Request)) {
 	a.addRoute("/v1", method, path, handleFunc)
+}
+
+// AddRouteV1WithBasicAuth adds a  new route to the v1 API that requires basic auth
+func (a *API) AddRouteV1WithBasicAuth(method, path string, handleFunc func(w http.ResponseWriter, r *http.Request)) {
+	a.addRoute("/v1", method, path, a.enforceBasicAuth(handleFunc))
 }
 
 func (a *API) addRoute(pathPrefix, method, path string, handleFunc func(w http.ResponseWriter, r *http.Request)) {

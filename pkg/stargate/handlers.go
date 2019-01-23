@@ -198,20 +198,6 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 
 // HandleListAlerts handles alert listing.
 func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-	userName, password, authOK := r.BasicAuth()
-	if !authOK {
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusUnauthorized, Message: "Unauthorized"})
-		s.logger.LogInfo("unauthorized request", "handler", "listAlerts")
-		return
-	}
-
-	if userName != s.Config.Slack.UserName || password != s.Config.Slack.GetValidationToken() {
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusUnauthorized, Message: "Unauthorized"})
-		s.logger.LogInfo("unauthorized request", "handler", "listAlerts")
-		return
-	}
-
 	// get a fresh list of alerts from the alertmanager
 	filter := alertmanager.NewFilterFromRequest(r)
 	alertList, err := s.alertmanagerClient.ListAlerts(filter)
@@ -232,6 +218,29 @@ func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
 		alertList[idx].Annotations = alert.MergeAnnotations(a, extendedAlert)
 	}
 
+	err = json.NewEncoder(w).Encode(alertList)
+	if err != nil {
+		s.logger.LogError("error encoding alertList", err)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding list of alerts"})
+		return
+	}
 	s.logger.LogDebug("responding to request", "handler", "listAlerts")
-	json.NewEncoder(w).Encode(alertList)
+}
+
+// HandleListSilences handles silence listing.
+func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
+	f := alertmanager.NewFilterFromRequest(r)
+	silenceList, err := s.alertmanagerClient.ListSilences(f)
+	if err != nil {
+		s.logger.LogError("error getting list of silences", err)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error getting list of silences"})
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(silenceList)
+	if err != nil {
+		s.logger.LogError("error encoding silenceList", err)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding list of silences "})
+	}
+	s.logger.LogDebug("responding to request", "handler", "listAlerts")
 }
