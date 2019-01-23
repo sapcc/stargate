@@ -2,9 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
-	"net/http"
 )
 
 type authMiddleware struct {
@@ -27,13 +28,13 @@ func (a *authMiddleware) enforceBasicAuth(next http.HandlerFunc) http.HandlerFun
 		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 		userName, password, authOK := r.BasicAuth()
 		if !authOK {
-			a.logger.LogInfo("username and/or password not provided", "path", r.URL.Path)
+			a.logger.LogInfo("username and/or password not provided", "method", r.Method, "path", r.URL.Path)
 			json.NewEncoder(w).Encode(Error{Code: http.StatusUnauthorized, Message: "user not authorized. provide username and password"})
 			return
 		}
 
 		if userName != a.userName || password != a.password {
-			a.logger.LogInfo("unauthorized request", "path", r.URL.Path)
+			a.logger.LogInfo("unauthorized request", "method", r.Method, "path", r.URL.Path)
 			json.NewEncoder(w).Encode(Error{Code: http.StatusUnauthorized, Message: "user not authorized"})
 			return
 		}
