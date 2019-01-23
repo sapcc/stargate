@@ -76,6 +76,9 @@ func New(opts config.Options, logger log.Logger) *Stargate {
 	// the v1 endpoint that accepts slack commands
 	v1API.AddRouteV1(http.MethodPost, "/slack/command", sg.HandleSlackCommand)
 
+	// the v1 endpoint that shows the status
+	v1API.AddRouteV1(http.MethodGet, "/status", sg.HandleGetStatus)
+
 	// the v1 endpoint that lists the alerts
 	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/alerts", sg.HandleListAlerts)
 

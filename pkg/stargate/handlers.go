@@ -240,7 +240,16 @@ func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
 	err = json.NewEncoder(w).Encode(silenceList)
 	if err != nil {
 		s.logger.LogError("error encoding silenceList", err)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding list of silences "})
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding list of silences"})
 	}
 	s.logger.LogDebug("responding to request", "handler", "listAlerts")
+}
+
+// HandleGetStatus handles the status.
+func (s *Stargate) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
+	err := json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
+	if err != nil {
+		s.logger.LogError("error encoding status", err)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding status"})
+	}
 }

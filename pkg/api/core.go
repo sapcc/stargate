@@ -61,19 +61,20 @@ func NewAPI(config config.Config, logger log.Logger) *API {
 
 // AddRouteV1 adds a new route to the v1 API
 func (a *API) AddRouteV1(method, path string, handleFunc http.HandlerFunc) {
-	a.addRoute("/v1", method, path, handleFunc)
+	a.addRoute("/api/v1", method, path, handleFunc)
 }
 
 // AddRouteV1WithBasicAuth adds a  new route to the v1 API that requires basic auth
 func (a *API) AddRouteV1WithBasicAuth(method, path string, handleFunc http.HandlerFunc) {
-	a.addRoute("/v1", method, path, a.enforceBasicAuth(handleFunc))
+	a.addRoute("/api/v1", method, path, a.enforceBasicAuth(handleFunc))
 }
 
 func (a *API) addRoute(pathPrefix, method, path string, handleFunc http.HandlerFunc) {
 	a.PathPrefix(pathPrefix).Methods(method).Path(path).HandlerFunc(
 		promhttp.InstrumentHandlerCounter(
 			metrics.HTTPRequestsTotal.MustCurryWith(prometheus.Labels{"method": method, "handler": pathPrefix + path}),
-			handleFunc),
+			handleFunc,
+		),
 	)
 }
 
