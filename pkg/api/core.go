@@ -70,12 +70,26 @@ func (a *API) AddRouteV1WithBasicAuth(method, path string, handleFunc http.Handl
 }
 
 func (a *API) addRoute(pathPrefix, method, path string, handleFunc http.HandlerFunc) {
-	a.PathPrefix(pathPrefix).Methods(method).Path(path).HandlerFunc(
-		promhttp.InstrumentHandlerCounter(
-			metrics.HTTPRequestsTotal.MustCurryWith(prometheus.Labels{"method": method, "handler": pathPrefix + path}),
-			handleFunc,
+	// also allow OPTIONS request
+	a.PathPrefix(pathPrefix).Methods(method, http.MethodOptions).Path(path).HandlerFunc(
+		enableCors(
+			promhttp.InstrumentHandlerCounter(
+				metrics.HTTPRequestsTotal.MustCurryWith(prometheus.Labels{"method": method, "handler": pathPrefix + path}),
+				handleFunc,
+			),
 		),
 	)
+}
+
+func enableCors(handler http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+			w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		}
+		handler.ServeHTTP(w, r)
+	})
 }
 
 // Serve starts the stargate API

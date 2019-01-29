@@ -199,6 +199,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 // HandleListAlerts handles alert listing.
 func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	// get a fresh list of alerts from the alertmanager
 	filter := alertmanager.NewFilterFromRequest(r)
 	alertList, err := s.alertmanagerClient.ListAlerts(filter)
@@ -232,6 +233,7 @@ func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
 // HandleListSilences handles silence listing.
 func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	f := alertmanager.NewFilterFromRequest(r)
 	silenceList, err := s.alertmanagerClient.ListSilences(f)
 	if err != nil {
@@ -253,6 +255,7 @@ func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
 // HandleGetStatus handles the status.
 func (s *Stargate) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	err := json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
 	if err != nil {
 		s.logger.LogError("error encoding status", err)
