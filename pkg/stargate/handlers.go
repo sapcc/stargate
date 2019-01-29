@@ -274,8 +274,9 @@ func (s *Stargate) respondWithJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var d struct{
-		data interface{} `json:"data"`
+		Data interface{} `json:"data"`
 	}
+	d.Data = data
 
 	err := json.NewEncoder(w).Encode(d)
 	if err != nil || data == nil {
