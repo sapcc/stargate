@@ -32,6 +32,7 @@ import (
 	"github.com/sapcc/stargate/pkg/slack"
 	"github.com/sapcc/stargate/pkg/store"
 	"github.com/sapcc/stargate/pkg/util"
+	"github.com/gorilla/mux"
 )
 
 // HandleSlackMessageActionEvent handles slack message action events
@@ -220,13 +221,7 @@ func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
 		alertList[idx].Annotations = alert.MergeAnnotations(a, extendedAlert)
 	}
 
-	err = json.NewEncoder(w).Encode(alertList)
-	if err != nil {
-		s.logger.LogError("error encoding alertList", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding list of alerts"})
-		return
-	}
+	s.respondWithJSON(w, alertList)
 	s.logger.LogDebug("responding to request", "handler", "listAlerts")
 }
 
@@ -243,22 +238,48 @@ func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.NewEncoder(w).Encode(silenceList)
-	if err != nil {
-		s.logger.LogError("error encoding silenceList", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding list of silences"})
-	}
+	s.respondWithJSON(w, silenceList)
 	s.logger.LogDebug("responding to request", "handler", "listAlerts")
 }
 
 // HandleGetStatus handles the status.
 func (s *Stargate) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
+	s.respondWithJSON(w, map[string]string{"status": "ready"})
+}
+
+// HandleGetSilenceByID handles getting the silence by ID.
+func (s *Stargate) HandleGetSilenceByID(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	silenceID, ok := vars["silenceID"]
+	if !ok {
+		s.logger.LogDebug("not silence ID found in path")
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	silence, err := s.alertmanagerClient.GetSilenceByID(silenceID)
+	if err != nil {
+		s.logger.LogError("error getting silence by id", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error getting silence by id"})
+		return
+	}
+
+	s.respondWithJSON(w, silence)
+	s.logger.LogDebug("responding to request", "handler", "getSilenceByID")
+}
+
+func (s *Stargate) respondWithJSON(w http.ResponseWriter, data interface{}) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	err := json.NewEncoder(w).Encode(map[string]string{"status": "ready"})
-	if err != nil {
-		s.logger.LogError("error encoding status", err)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding status"})
+
+	var d struct{
+		data interface{} `json:"data"`
+	}
+
+	err := json.NewEncoder(w).Encode(d)
+	if err != nil || data == nil {
+		s.logger.LogError("error encoding data", err)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding data"})
 	}
 }

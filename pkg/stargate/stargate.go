@@ -85,6 +85,9 @@ func New(opts config.Options, logger log.Logger) *Stargate {
 	// the v1 endpoint that list silences
 	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/silences", sg.HandleListSilences)
 
+	// the v1 endpoint that gets a silence by id
+	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/silence/{silenceID}", sg.HandleGetSilenceByID)
+
 	sg.v1API = v1API
 	return sg
 }

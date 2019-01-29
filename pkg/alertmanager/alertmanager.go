@@ -141,6 +141,12 @@ func (a *Client) ListSilences(f *Filter) ([]*types.Silence, error) {
 	return a.silenceAPIClient.List(context.TODO(), f.toString())
 }
 
+// GetSilenceByID returns a silence or an error if nothing was found.
+func (a *Client) GetSilenceByID(silenceID string) (*types.Silence, error) {
+	a.logger.LogDebug("getting silence", "silenceID", silenceID)
+	return a.silenceAPIClient.Get(context.TODO(), silenceID)
+}
+
 func (a *Client) isSilenceExists(matchers types.Matchers) (string, bool, error) {
 	matchersNoAuthor := matchersWithoutAuthor(matchers)
 	silences, err := a.silenceAPIClient.List(context.TODO(), matchersNoAuthor.String())
