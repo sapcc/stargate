@@ -274,6 +274,13 @@ func (s *Stargate) HandleGetSilenceByID(w http.ResponseWriter, r *http.Request) 
 	s.logger.LogDebug("responding to request", "handler", "getSilenceByID")
 }
 
+// HandleInternalListAlertsFromStore handles listing alerts from the internal store.
+func (s *Stargate) HandleInternalListAlertsFromStore(w http.ResponseWriter, r *http.Request) {
+	alertList := s.alertStore.List()
+	s.respondWithJSON(w, alertList)
+	s.logger.LogDebug("responding to request", "handler", "internalListAlertsFromStore")
+}
+
 func (s *Stargate) respondWithJSON(w http.ResponseWriter, data interface{}) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
