@@ -32,10 +32,11 @@ import (
 	"strings"
 )
 
-// StatusAcknowledged ...
 const (
+	// StatusAcknowledged ...
 	StatusAcknowledged = "acknowledged"
-	TypeUserReference  = "user_reference"
+	// TypeUserReference ...
+	TypeUserReference = "user_reference"
 )
 
 // Client ...
@@ -46,7 +47,13 @@ type Client struct {
 	defaultUser     *pagerduty.User
 }
 
-// NewClient creates a new pagerduty client
+// ShortPagerdutyIncident ...
+type ShortPagerdutyIncident struct {
+	Name   string `json:"name"`
+	Region string `json:"region"`
+}
+
+// NewClient creates a new pagerduty client.
 func NewClient(config config.Config, logger log.Logger) *Client {
 	logger = log.NewLoggerWith(logger, "component", "pagerduty")
 
@@ -73,7 +80,7 @@ func NewClient(config config.Config, logger log.Logger) *Client {
 	return client
 }
 
-// AcknowledgeIncident acknowledges a currently firing incident
+// AcknowledgeIncident acknowledges a currently firing incident.
 func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail string) error {
 	if userEmail == "" {
 		return fmt.Errorf("cannot acknowledge alert '%s' without a mail address", alert.Alert)
@@ -109,7 +116,40 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 	)
 }
 
-// findIncident finds triggered incidents in pagerduty by alertname, region
+// ListParsedIncidents returns a list of parsed Pagerduty incidents or an error.
+func (p *Client) ListParsedIncidents() ([]*ShortPagerdutyIncident, error) {
+	incidentList, err := p.pagerdutyClient.ListIncidents(pagerduty.ListIncidentsOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	shortPagerdutyIncidentList := make([]*ShortPagerdutyIncident, 0)
+	for _, incident := range incidentList.Incidents {
+		matchMap, err := parseRegionAndAlertnameFromPagerdutySummary(incident.APIObject.Summary)
+		if err != nil {
+			p.logger.LogError("incident parsing failed", err)
+			continue
+		}
+		foundAlertname, nameOK := matchMap["alertname"]
+		foundRegion, regionOK := matchMap["region"]
+		if !nameOK || !regionOK {
+			p.logger.LogError(
+				"incident parsing failed",
+				errors.New("pagerduty incident summary does not contain a region and/or alertname"),
+			)
+			continue
+		}
+
+		shortPagerdutyIncidentList = append(
+			shortPagerdutyIncidentList,
+			&ShortPagerdutyIncident{Name: foundAlertname, Region: foundRegion},
+		)
+	}
+
+	return shortPagerdutyIncidentList, nil
+}
+
+// findIncident finds triggered incidents in pagerduty by alertname, region.
 func (p *Client) findIncidentByAlert(extendedAlert *client.ExtendedAlert) (*pagerduty.Incident, error) {
 	regionName, err := alert.GetRegionFromExtendedAlert(extendedAlert)
 	if err != nil {

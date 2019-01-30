@@ -281,6 +281,33 @@ func (s *Stargate) HandleInternalListAlertsFromStore(w http.ResponseWriter, r *h
 	s.logger.LogDebug("responding to request", "handler", "internalListAlertsFromStore")
 }
 
+// HandleInternalListAlertsFromAlertmanager handles listing the alerts from the alertmanager.
+func (s *Stargate) HandleInternalListAlertsFromAlertmanager(w http.ResponseWriter, r *http.Request) {
+	alertList, err := s.alertmanagerClient.ListAlerts(alertmanager.NewDefaultFilter())
+	if err != nil {
+		s.logger.LogError("error listing alerts from alertmanager", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error listing alerts from alertmanager"})
+		return
+	}
+	s.respondWithJSON(w, alertList)
+	s.logger.LogDebug("responding to request", "handler", "internalListAlertsFromAlertmanager")
+}
+
+// HandleInternalListPagerdutyIncident handles listing the pagerduty incidents.
+func (s *Stargate) HandleInternalListPagerdutyIncident(w http.ResponseWriter, r *http.Request) {
+	incidentList, err := s.pagerdutyClient.ListParsedIncidents()
+	if err != nil {
+		s.logger.LogError("error listing incidents from pagerduty", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error listing incidents from pagerduty"})
+		return
+	}
+
+	s.respondWithJSON(w, incidentList)
+	s.logger.LogDebug("responding to request", "handler", "internalListAlertsFromAlertmanager")
+}
+
 func (s *Stargate) respondWithJSON(w http.ResponseWriter, data interface{}) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")

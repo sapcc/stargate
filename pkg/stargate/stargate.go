@@ -91,6 +91,10 @@ func New(opts config.Options, logger log.Logger) *Stargate {
 	// The internal v1 endpoint that lists the alerts currently held in the store. Useful for debugging.
 	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/-/store/alerts", sg.HandleInternalListAlertsFromStore)
 
+	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/-/alertmanager/alerts", sg.HandleInternalListAlertsFromAlertmanager)
+
+	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/-/pagerduty/incidents", sg.HandleInternalListPagerdutyIncident)
+
 	sg.v1API = v1API
 	return sg
 }
