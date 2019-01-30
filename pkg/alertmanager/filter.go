@@ -34,7 +34,7 @@ type Filter struct {
 	IsActive,
 	IsUnprocessed bool
 	Receiver  string
-	AddFilter map[string]string
+	AddFilter string
 }
 
 // NewDefaultFilter returns a new default filter.
@@ -46,7 +46,7 @@ func NewDefaultFilter() *Filter {
 		IsActive:      true,
 		IsUnprocessed: false,
 		Receiver:      "",
-		AddFilter:     map[string]string{},
+		AddFilter:     "",
 	}
 }
 
@@ -67,8 +67,12 @@ func NewFilterFromRequest(r *http.Request) *Filter {
 			f.IsUnprocessed = toBool(v)
 		case "receiver":
 			f.Receiver = strings.Join(v, ",")
+		case "filter":
+			for _, itm := range v {
+				f.AddFilter += strings.TrimPrefix(itm, "filter=")
+			}
 		default:
-			f.AddFilter[k] = strings.Join(v, ",")
+			continue
 		}
 	}
 	return f
@@ -76,22 +80,20 @@ func NewFilterFromRequest(r *http.Request) *Filter {
 
 // WithAdditionalFilter adds an additional filter
 func (f *Filter) WithAdditionalFilter(addFilter map[string]string) {
-	f.AddFilter = addFilter
+	for k, v := range addFilter {
+		f.AddFilter += fmt.Sprintf("%s=%s", k, v)
+	}
 }
 
 // WithAlertLabelsFilter adds a filter based on alert labels
 func (f *Filter) WithAlertLabelsFilter(lblset client.LabelSet) {
 	for k, v := range lblset {
-		f.AddFilter[string(k)] = string(v)
+		f.AddFilter += fmt.Sprintf("%s=%s", string(k), string(v))
 	}
 }
 
 func (f *Filter) toString() string {
-	var filterList []string
-	for k, v := range f.AddFilter {
-		filterList = append(filterList, fmt.Sprintf(`%s="%s"`, k, v))
-	}
-	return strings.Join(filterList, ",")
+	return f.AddFilter
 }
 
 func toBool(s []string) bool {

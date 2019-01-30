@@ -92,15 +92,6 @@ func New(opts config.Options, logger log.Logger) *Stargate {
 	return sg
 }
 
-// HandleSlackCommand handles slack commands
-func (s *Stargate) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
-	s.logger.LogDebug("received slack command")
-	w.WriteHeader(http.StatusNoContent)
-	r.ParseForm()
-
-	go s.slack.HandleSlackCommand(r)
-}
-
 // Run starts the stargate
 func (s *Stargate) Run(wg *sync.WaitGroup, stopCh <-chan struct{}) {
 	defer wg.Done()

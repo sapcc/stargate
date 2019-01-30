@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/sapcc/stargate/pkg/alert"
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/api"
@@ -32,8 +33,16 @@ import (
 	"github.com/sapcc/stargate/pkg/slack"
 	"github.com/sapcc/stargate/pkg/store"
 	"github.com/sapcc/stargate/pkg/util"
-	"github.com/gorilla/mux"
 )
+
+// HandleSlackCommand handles slack commands
+func (s *Stargate) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
+	s.logger.LogDebug("received slack command")
+	w.WriteHeader(http.StatusNoContent)
+	r.ParseForm()
+
+	go s.slack.HandleSlackCommand(r)
+}
 
 // HandleSlackMessageActionEvent handles slack message action events
 func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.Request) {
@@ -199,8 +208,6 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 
 // HandleListAlerts handles alert listing.
 func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
 	// get a fresh list of alerts from the alertmanager
 	filter := alertmanager.NewFilterFromRequest(r)
 	alertList, err := s.alertmanagerClient.ListAlerts(filter)
@@ -227,8 +234,6 @@ func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
 
 // HandleListSilences handles silence listing.
 func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
 	f := alertmanager.NewFilterFromRequest(r)
 	silenceList, err := s.alertmanagerClient.ListSilences(f)
 	if err != nil {
@@ -273,7 +278,7 @@ func (s *Stargate) respondWithJSON(w http.ResponseWriter, data interface{}) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 
-	var d struct{
+	var d struct {
 		Data interface{} `json:"data"`
 	}
 	d.Data = data

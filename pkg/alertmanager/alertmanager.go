@@ -179,7 +179,6 @@ func matchersFromAlert(alert *client.ExtendedAlert) types.Matchers {
 			Value: string(labelValue),
 		}
 		m.IsRegex = true
-
 		matchers = append(matchers, m)
 	}
 
