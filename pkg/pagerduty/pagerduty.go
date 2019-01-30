@@ -29,6 +29,7 @@ import (
 	"github.com/sapcc/stargate/pkg/alert"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
+	"strings"
 )
 
 // StatusAcknowledged ...
@@ -125,6 +126,7 @@ func (p *Client) findIncidentByAlert(extendedAlert *client.ExtendedAlert) (*page
 		return nil, err
 	}
 
+	var incidentDebugList []string
 	for _, incident := range incidentList.Incidents {
 		matchMap, err := parseRegionAndAlertnameFromPagerdutySummary(incident.APIObject.Summary)
 		if err != nil {
@@ -141,12 +143,15 @@ func (p *Client) findIncidentByAlert(extendedAlert *client.ExtendedAlert) (*page
 			continue
 		}
 
-		//p.logger.LogDebug("found incident", "name", foundAlertname, "region", foundRegion)
+		// for debugging purposed only: used for printing a the list of known incidents in a more comprehensive format
+		incidentDebugList = append(incidentDebugList, fmt.Sprintf("[name=%s,region=%s]", foundAlertname, foundRegion))
 
 		if foundAlertname == alertName && foundRegion == regionName {
 			return &incident, nil
 		}
 	}
+
+	p.logger.LogInfo("found incidents", "incidents", strings.Join(incidentDebugList, ", "))
 	return nil, fmt.Errorf("no incident found for alert name: '%s', region: '%s'", alertName, regionName)
 }
 
