@@ -90,7 +90,7 @@ func New(opts config.Options, logger log.Logger) *Stargate {
 
 	// The internal v1 endpoint useful for debugging.
 	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/-/store/alerts", sg.HandleInternalListAlertsFromStore)
-	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/-/store/acknowledge", sg.HandleInternalAcknowledgeAlert)
+	v1API.AddRouteV1WithBasicAuth(http.MethodPost, "/-/store/acknowledge", sg.HandleInternalAcknowledgeAlert)
 	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/-/alertmanager/alerts", sg.HandleInternalListAlertsFromAlertmanager)
 	v1API.AddRouteV1WithBasicAuth(http.MethodGet, "/-/pagerduty/incidents", sg.HandleInternalListPagerdutyIncident)
 
