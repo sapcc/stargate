@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   pullPolicy: IfNotPresent
   repository: sapcc/stargate
-  tag: 5a8b559f
+  tag: ca31221b
 
 # the port used to expose the stargate API
 port: 8080

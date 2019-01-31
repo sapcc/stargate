@@ -26,8 +26,10 @@ import (
 )
 
 const (
-	summaryText         = "[#1594] \n [EU-DE-1] OpenstackLbaasApiFlapping - lbaas API flapping\n"
-	summaryTextWithLink = "[#1598] \n [AP-SA-1] BaremetalIronicSensorCritical - Sensor Critical for instance node009r-bm020.cc.ap-sa-1.cloud.sap\n"
+	summaryText                      = "[#1594] \n [EU-DE-1] OpenstackLbaasApiFlapping - lbaas API flapping\n"
+	summaryTextWithLink              = "[#1598] \n [AP-SA-1] BaremetalIronicSensorCritical - Sensor Critical for instance node009r-bm020.cc.ap-sa-1.cloud.sap\n"
+	summaryTextMultiple              = "[#2130] \n [7 Alerts] [EU-DE-2] VVOLDatastoreNotAccessibleFromHost - vVOL Datastore accessibility check from host\n"
+	summaryTextMultipleNoDescription = "[#2144] \n [3 Alerts] [EU-NL-1] OpenstackNeutronDatapathDown - \n"
 )
 
 func TestParseAlertFromSlackMessageText(t *testing.T) {
@@ -40,6 +42,14 @@ func TestParseAlertFromSlackMessageText(t *testing.T) {
 		summaryTextWithLink: {
 			"alertname": "BaremetalIronicSensorCritical",
 			"region":    "ap-sa-1",
+		},
+		summaryTextMultiple: {
+			"alertname": "VVOLDatastoreNotAccessibleFromHost",
+			"region":    "eu-de-2",
+		},
+		summaryTextMultipleNoDescription: {
+			"alertname": "OpenstackNeutronDatapathDown",
+			"region":    "eu-nl-1",
 		},
 	}
 

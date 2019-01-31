@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/prometheus/alertmanager/client"
 	"github.com/sapcc/stargate/pkg/alert"
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/sapcc/stargate/pkg/api"
@@ -308,14 +309,58 @@ func (s *Stargate) HandleInternalListPagerdutyIncident(w http.ResponseWriter, r 
 	s.logger.LogDebug("responding to request", "handler", "internalListAlertsFromAlertmanager")
 }
 
+// HandleInternalAcknowledgeAlert handles acknowledging an alert.
+func (s *Stargate) HandleInternalAcknowledgeAlert(w http.ResponseWriter, r *http.Request) {
+	var d struct {
+		Data struct {
+			Alertname      string `json:"alertname"`
+			Region         string `json:"region"`
+			AcknowledgedBy string `json:"acknowledgedBy"`
+		} `json:"data"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&d)
+	if err != nil {
+		s.logger.LogError("error decoding data", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error decoding data"})
+		return
+	}
+
+	alertList := []*client.ExtendedAlert{{
+		Alert: client.Alert{
+			Labels: client.LabelSet{
+				client.LabelName("alertname"): client.LabelValue(d.Data.Alertname),
+				client.LabelName("region"):    client.LabelValue(d.Data.Region),
+			},
+		},
+	}}
+
+	err = s.alertStore.AcknowledgeAndSetMultiple(alertList, d.Data.AcknowledgedBy)
+	if err != nil {
+		s.logger.LogError("error acknowledging alert", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error acknowledging alert"})
+		return
+	}
+
+	s.respondWithJSON(w, nil)
+	s.logger.LogDebug("responding to request", "handler", "internalAcknowledgeAlert")
+}
+
 func (s *Stargate) respondWithJSON(w http.ResponseWriter, data interface{}) {
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 
 	var d struct {
-		Data interface{} `json:"data"`
+		Data   interface{} `json:"data,omitempty"`
+		Status string      `json:"status,omitempty"`
 	}
-	d.Data = data
+	if data != nil {
+		d.Data = data
+	} else {
+		d.Status = "success"
+	}
 
 	err := json.NewEncoder(w).Encode(d)
 	if err != nil || data == nil {

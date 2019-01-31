@@ -35,6 +35,8 @@ import (
 const (
 	// StatusAcknowledged ...
 	StatusAcknowledged = "acknowledged"
+	// StatusTriggered ...
+	StatusTriggered = "triggered"
 	// TypeUserReference ...
 	TypeUserReference = "user_reference"
 )
@@ -118,13 +120,13 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 
 // ListParsedIncidents returns a list of parsed Pagerduty incidents or an error.
 func (p *Client) ListParsedIncidents() ([]*ShortPagerdutyIncident, error) {
-	incidentList, err := p.pagerdutyClient.ListIncidents(pagerduty.ListIncidentsOptions{})
+	incidentList, err := p.listIncidents()
 	if err != nil {
 		return nil, err
 	}
 
 	shortPagerdutyIncidentList := make([]*ShortPagerdutyIncident, 0)
-	for _, incident := range incidentList.Incidents {
+	for _, incident := range incidentList {
 		matchMap, err := parseRegionAndAlertnameFromPagerdutySummary(incident.APIObject.Summary)
 		if err != nil {
 			p.logger.LogError("incident parsing failed", err)
@@ -145,7 +147,6 @@ func (p *Client) ListParsedIncidents() ([]*ShortPagerdutyIncident, error) {
 			&ShortPagerdutyIncident{Name: foundAlertname, Region: foundRegion},
 		)
 	}
-
 	return shortPagerdutyIncidentList, nil
 }
 
@@ -161,13 +162,13 @@ func (p *Client) findIncidentByAlert(extendedAlert *client.ExtendedAlert) (*page
 		return nil, err
 	}
 
-	incidentList, err := p.pagerdutyClient.ListIncidents(pagerduty.ListIncidentsOptions{})
+	incidentList, err := p.listIncidents()
 	if err != nil {
 		return nil, err
 	}
 
 	var incidentDebugList []string
-	for _, incident := range incidentList.Incidents {
+	for _, incident := range incidentList {
 		matchMap, err := parseRegionAndAlertnameFromPagerdutySummary(incident.APIObject.Summary)
 		if err != nil {
 			p.logger.LogError("incident parsing failed", err)
@@ -208,6 +209,14 @@ func (p *Client) findUserIDByEmail(userEmail string) (*pagerduty.User, error) {
 	}
 
 	return nil, fmt.Errorf("no pagerduty user with email '%s' found", userEmail)
+}
+
+func (p *Client) listIncidents() ([]pagerduty.Incident, error) {
+	incidentList, err := p.pagerdutyClient.ListIncidents(pagerduty.ListIncidentsOptions{TimeZone: "UTC", Statuses: []string{StatusTriggered}})
+	if err != nil {
+		return nil, err
+	}
+	return incidentList.Incidents, nil
 }
 
 func (p *Client) addActualAcknowledgerAsNoteToIncident(incident *pagerduty.Incident, actualAcknowledger string) error {
