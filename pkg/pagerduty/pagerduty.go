@@ -192,7 +192,7 @@ func (p *Client) findIncidentByAlert(extendedAlert *client.ExtendedAlert) (*page
 		}
 	}
 
-	p.logger.LogInfo("found incidents", "incidents", strings.Join(incidentDebugList, ", "))
+	p.logger.LogDebug("found incidents", "incidents", strings.Join(incidentDebugList, ", "))
 	return nil, fmt.Errorf("no incident found for alert name: '%s', region: '%s'", alertName, regionName)
 }
 

@@ -131,8 +131,10 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 					s.logger.LogError("failed to acknowledge alert", err, "component", "alertmanager", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
 					metrics.FailedOperationsTotal.WithLabelValues("acknowledge").Inc()
 				} else {
-					// Don't return here on failure. We might be able to acknowledge in Pagerduty.
-					s.logger.LogInfo("acknowledged alert", "component", "alertmanager", "labels", alert.ClientLabelSetToString(slackAlert.Labels))
+					for _, a := range alertList {
+						// Don't return here on failure. We might be able to acknowledge in Pagerduty.
+						s.logger.LogInfo("acknowledged alert", "component", "alertmanager", "labels", alert.ClientLabelSetToString(a.Labels))
+					}
 				}
 
 				if err := s.pagerdutyClient.AcknowledgeIncident(slackAlert, userEmail); err != nil {
