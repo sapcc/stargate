@@ -253,11 +253,11 @@ func (a *AlertStore) garbageCollect() error {
 		al, ok := currentAlertMap[fp]
 		if !ok {
 			delete(a.s, fp)
-			a.logger.LogDebug("alert can no longer be found in alertmanager. deleting from store", "fingerprint", fp.String())
+			a.logger.LogDebug("alert can no longer be found in alertmanager. deleting from store", "fingerprint", fp.String(), "alertname", string(al.Labels["alertname"]))
 			continue
 		} else if al.EndsAt.UTC().After(time.Now().UTC()) {
 			delete(a.s, fp)
-			a.logger.LogDebug("alert is expired. deleting alert from store", "fingerprint", fp.String())
+			a.logger.LogDebug("alert is expired. deleting alert from store", "fingerprint", fp.String(), "alertname", string(al.Labels["alertname"]))
 			continue
 		}
 		// Update the EndsAt of the alert in the AlertStore with the one found in the Alertmanager.

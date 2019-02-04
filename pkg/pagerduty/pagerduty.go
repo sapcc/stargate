@@ -100,6 +100,7 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 			return err
 		}
 		user = p.defaultUser
+		userEmail = user.Email
 		if err := p.addActualAcknowledgerAsNoteToIncident(incident, userEmail); err != nil {
 			p.logger.LogError("failed to add note to incident", err, "incidentID", incident.ID)
 		}
@@ -107,8 +108,8 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 
 	ackedIncident := acknowledgeIncident(incident, user)
 	p.logger.LogDebug("acknowledged incident",
-		"assignments", ackedIncident.Assignments,
-		"acknowledgements", ackedIncident.Acknowledgements,
+		"assignments", assignmentsToString(ackedIncident.Assignments),
+		"acknowledgements", acknowledgementsToString(ackedIncident.Acknowledgements),
 		"status", ackedIncident.Status,
 	)
 
@@ -212,7 +213,7 @@ func (p *Client) findUserIDByEmail(userEmail string) (*pagerduty.User, error) {
 }
 
 func (p *Client) listIncidents() ([]pagerduty.Incident, error) {
-	incidentList, err := p.pagerdutyClient.ListIncidents(pagerduty.ListIncidentsOptions{TimeZone: "UTC", Statuses: []string{StatusTriggered}})
+	incidentList, err := p.pagerdutyClient.ListIncidents(pagerduty.ListIncidentsOptions{Statuses: []string{StatusTriggered}})
 	if err != nil {
 		return nil, err
 	}
