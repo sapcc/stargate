@@ -69,7 +69,14 @@ func NewFilterFromRequest(r *http.Request) *Filter {
 			f.Receiver = strings.Join(v, ",")
 		case "filter":
 			for _, itm := range v {
-				f.AddFilter += strings.TrimPrefix(itm, "filter=")
+				addFilter := strings.TrimPrefix(itm, "filter=")
+				// quick fix for broken grafana query like key="{value}"
+				addFilter = strings.Replace(addFilter, "{", "", -1)
+				addFilter = strings.Replace(addFilter, "}", "", -1)
+				if f.AddFilter != "" {
+					f.AddFilter += ","
+				}
+				f.AddFilter += addFilter
 			}
 		default:
 			continue
