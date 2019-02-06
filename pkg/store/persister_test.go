@@ -123,7 +123,7 @@ func newPersister() (*FilePersister, error) {
 	}
 
 	// Ensure fixtures dir exists.
-	if err := os.Mkdir(path.Join(pwd, PathFixtures), 777); err != nil {
+	if err := os.Mkdir(path.Join(pwd, PathFixtures), os.ModePerm); err != nil {
 		if !os.IsExist(err) {
 			return nil, errors.Wrapf(err, "error creating directory '%s'", PathFixtures)
 		}
