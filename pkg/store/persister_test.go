@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/prometheus/alertmanager/client"
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/log"
@@ -119,6 +120,13 @@ func newPersister() (*FilePersister, error) {
 	pwd, err := os.Getwd()
 	if err != nil {
 		return nil, err
+	}
+
+	// Ensure fixtures dir exists.
+	if err := os.Mkdir(path.Join(pwd, PathFixtures), 777); err != nil {
+		if !os.IsExist(err) {
+			return nil, errors.Wrapf(err, "error creating directory '%s'", PathFixtures)
+		}
 	}
 
 	return NewFilePersister(path.Join(pwd, PathFixtures, FileNamePersistetAlertStore), log.NewLogger(true))

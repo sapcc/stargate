@@ -1,0 +1,41 @@
+# Excerpt from the Prometheus Alertmanager configuration.
+# Also see the slack.tmpl in the same folder.
+
+...
+
+route:
+  routes:
+  - receiver: slack_stargate
+    continue: true
+
+receivers:
+  - name: slack_stargate
+    slack_configs:
+      - api_url: <slack_webhook_url>
+        username: "Stargate"
+        title: {{"'{{template \"slack.sapcc.title\" . }}'"}}
+        title_link: {{"'{{template \"slack.sapcc.titlelink\" . }}'"}}
+        text: {{"'{{template \"slack.sapcc.text\" . }}'"}}
+        pretext: {{"'{{template \"slack.sapcc.pretext\" . }}'"}}
+        icon_emoji: {{"'{{template \"slack.sapcc.iconemoji\" . }}'"}}
+        callback_id: "alertmanager"
+        send_resolved: true
+        actions:
+          - name: {{"'{{template \"slack.sapcc.actionName\" . }}'"}}
+            type: {{"'{{template \"slack.sapcc.actionType\" . }}'"}}
+            text: {{"'{{template \"slack.sapcc.acknowledge.actionText\" . }}'"}}
+            value: {{"'{{template \"slack.sapcc.acknowledge.actionValue\" . }}'"}}
+          - name: {{"'{{template \"slack.sapcc.actionName\" . }}'"}}
+            type: {{"'{{template \"slack.sapcc.actionType\" . }}'"}}
+            text: {{"'{{template \"slack.sapcc.silence1Day.actionText\" . }}'"}}
+            value: {{"'{{template \"slack.sapcc.silence1Day.actionValue\" . }}'"}}
+          - name: {{"'{{template \"slack.sapcc.actionName\" . }}'"}}
+            type: {{"'{{template \"slack.sapcc.actionType\" . }}'"}}
+            text: {{"'{{template \"slack.sapcc.silenceUntilMonday.actionText\" . }}'"}}
+            value: {{"'{{template \"slack.sapcc.silenceUntilMonday.actionValue\" . }}'"}}
+          - name: {{"'{{template \"slack.sapcc.actionName\" . }}'"}}
+            type: {{"'{{template \"slack.sapcc.actionType\" . }}'"}}
+            text: {{"'{{template \"slack.sapcc.silence1Month.actionText\" . }}'"}}
+            value: {{"'{{template \"slack.sapcc.silence1Month.actionValue\" . }}'"}}
+
+...

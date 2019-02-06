@@ -1,7 +1,40 @@
+# Prometheus Alertmanager configuration.
+alertmanager:
+  # The URL of the Prometheus Alertmanager.
+  url: https://alertmanager.your.domain
+
+# Pagerduty configuration.
+pagerduty:
+  # Authentication token used for Pagerduty.
+  auth_token: "secretPagerdutyToken"
+
+  # Fallback email address of a
+  # To ensure an incident is acknowledged in Pagerduty even if the
+  default_user_email: "stargate@your.domam"
+
+# Slack configuration.
 slack:
-  signing_secret: "secretSigningSecret"
-  verification_token: "verificationToken"
+  # Post Slack messages using this user name.
+  # Might be overwritten via configuration in Slack app.
+  user_name: "Stargate"
+
+  # Post Slack messages using this user icon.
+  # Might be overwritten via configuration in Slack app.
+  user_icon: ":fire_engine:"
+
+  # The token used to verify Slack messages.
+  verification_token: "secretVerificationToken"
+
+  # The OAuth token used for Slack.
   access_token: "secretAccessToken"
+
+  # The token used if the stargate bot is used.
+  bot_user_access_token: "secretBotUserAccessToken"
+
+  # List of authorized Slack user groups.
+  # Only members of these groups will be able to use interactive message via the Stargate.
+  # Membership is checked periodically.
   authorized_groups:
-    - admin
-    - hase
+    - Markus_Direct_Reports
+    - CCloud_DevOps
+    - CCloud_CAM_Roles_Support
