@@ -1,11 +1,12 @@
 package alertmanager
 
 import (
-	"github.com/prometheus/alertmanager/client"
-	"github.com/sapcc/maia/.golangvend-cache/src/github.com/magiconair/properties/assert"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/prometheus/alertmanager/client"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestNewFilterFromRequest(t *testing.T) {

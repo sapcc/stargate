@@ -41,6 +41,9 @@ const (
 	TypeUserReference = "user_reference"
 )
 
+// ErrUserNotFound is the error raised when a user was not found by its mail address in Pagerduty.
+var ErrUserNotFound = errors.New("user not found")
+
 // Client ...
 type Client struct {
 	logger          log.Logger
@@ -95,12 +98,15 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 
 	user, err := p.findUserIDByEmail(userEmail)
 	if err != nil {
-		p.logger.LogError("pagerduty user not found. falling back to default user", err)
-		if p.defaultUser == nil {
+		// Return here if there's an error that is not UserNotFound.
+		if !isUserNotFound(err) {
 			return err
 		}
+
+		// Actual acknowledger has no Pagerduty user. Use the default user.
 		user = p.defaultUser
-		userEmail = user.Email
+		p.logger.LogInfo("pagerduty user not found. falling back to default user", "userMail", userEmail, "defaultUserMail", user.Email)
+
 		if err := p.addActualAcknowledgerAsNoteToIncident(incident, userEmail); err != nil {
 			p.logger.LogError("failed to add note to incident", err, "incidentID", incident.ID)
 		}
@@ -114,7 +120,7 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 	)
 
 	return p.pagerdutyClient.ManageIncidents(
-		userEmail,
+		user.Email,
 		[]pagerduty.Incident{ackedIncident},
 	)
 }
@@ -209,7 +215,7 @@ func (p *Client) findUserIDByEmail(userEmail string) (*pagerduty.User, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("no pagerduty user with email '%s' found", userEmail)
+	return nil, ErrUserNotFound
 }
 
 func (p *Client) listIncidents() ([]pagerduty.Incident, error) {
@@ -231,8 +237,7 @@ func (p *Client) addActualAcknowledgerAsNoteToIncident(incident *pagerduty.Incid
 			Summary: p.defaultUser.Summary,
 		},
 	}
-
-	return p.pagerdutyClient.CreateIncidentNote(incident.ID, note)
+	return p.pagerdutyClient.CreateIncidentNote(incident.APIObject.ID, note)
 }
 
 func acknowledgeIncident(incident *pagerduty.Incident, user *pagerduty.User) pagerduty.Incident {
@@ -261,4 +266,8 @@ func acknowledgeIncident(incident *pagerduty.Incident, user *pagerduty.User) pag
 	})
 	ackedIncident.Status = StatusAcknowledged
 	return ackedIncident
+}
+
+func isUserNotFound(err error) bool {
+	return err.Error() == ErrUserNotFound.Error()
 }
