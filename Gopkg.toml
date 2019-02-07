@@ -26,8 +26,8 @@
 
 
 [[constraint]]
-  name = "github.com/PagerDuty/go-pagerduty"
-  version = "1.0.4"
+  name = "github.com/sapcc/go-pagerduty"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/dustin/go-humanize"

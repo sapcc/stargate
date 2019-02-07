@@ -44,5 +44,5 @@ clean:
 	rm -rf bin/*
 
 vendor:
-	GO111MODULE=on go get -u ./... && go mod tidy && go mod vendor
+	dep ensure
 

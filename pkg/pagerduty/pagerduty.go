@@ -21,15 +21,15 @@ package pagerduty
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
-	"github.com/PagerDuty/go-pagerduty"
 	"github.com/pkg/errors"
 	"github.com/prometheus/alertmanager/client"
+	"github.com/sapcc/go-pagerduty"
 	"github.com/sapcc/stargate/pkg/alert"
 	"github.com/sapcc/stargate/pkg/config"
 	"github.com/sapcc/stargate/pkg/log"
-	"strings"
 )
 
 const (
@@ -96,6 +96,7 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 		return err
 	}
 
+	// Attempt to find Pagerduty user by email address.
 	user, err := p.findUserIDByEmail(userEmail)
 	if err != nil {
 		// Return here if there's an error that is not UserNotFound.
@@ -103,9 +104,10 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 			return err
 		}
 
-		// Actual acknowledger has no Pagerduty user. Use the default user.
+		// Getting here means, we didn't find the user in Pagerduty.
+		// Use the default user instead.
 		user = p.defaultUser
-		p.logger.LogInfo("pagerduty user not found. falling back to default user", "userMail", userEmail, "defaultUserMail", user.Email)
+		p.logger.LogInfo("pagerduty user not found. falling back to default user", "userMail", userEmail, "defaultUserMail", user.Email, "defaultUserID", user.ID)
 
 		if err := p.addActualAcknowledgerAsNoteToIncident(incident, userEmail); err != nil {
 			p.logger.LogError("failed to add note to incident", err, "incidentID", incident.ID)
@@ -113,7 +115,7 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 	}
 
 	ackedIncident := acknowledgeIncident(incident, user)
-	p.logger.LogDebug("acknowledged incident",
+	p.logger.LogDebug("acknowledge incident",
 		"assignments", assignmentsToString(ackedIncident.Assignments),
 		"acknowledgements", acknowledgementsToString(ackedIncident.Acknowledgements),
 		"status", ackedIncident.Status,
@@ -237,7 +239,7 @@ func (p *Client) addActualAcknowledgerAsNoteToIncident(incident *pagerduty.Incid
 			Summary: p.defaultUser.Summary,
 		},
 	}
-	return p.pagerdutyClient.CreateIncidentNote(incident.APIObject.ID, note)
+	return p.pagerdutyClient.CreateIncidentNote(incident.APIObject.ID, p.defaultUser.Email, note)
 }
 
 func acknowledgeIncident(incident *pagerduty.Incident, user *pagerduty.User) pagerduty.Incident {

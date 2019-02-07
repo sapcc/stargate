@@ -2,14 +2,6 @@
 
 
 [[projects]]
-  digest = "1:3bb331d3045ee55402a226f6ab0f005cbc09527df714278c3925d4700db79260"
-  name = "github.com/PagerDuty/go-pagerduty"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "b4a4067bdbde86de1d3fdf15c3c01e76bee9127c"
-  version = "1.0.4"
-
-[[projects]]
   branch = "master"
   digest = "1:d6afaeed1502aa28e80a4ed0981d570ad91b2579193404256ce672ed0a609e0d"
   name = "github.com/beorn7/perks"
@@ -145,12 +137,11 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:79425dcf2bf0fd6cfeee45fd7dcc74623fe3b36701480dc2b0ebdc8e0625d981"
+  digest = "1:6bf73fb3fc50ccf78af3a479af9568d4b708bced1f30ae2c633dc0f7e62d4837"
   name = "github.com/prometheus/alertmanager"
   packages = [
     "client",
     "config",
-    "store",
     "types",
   ]
   pruneopts = "UT"
@@ -205,6 +196,14 @@
   revision = "b1a0a9a36d7453ba0f62578b99712f3a6c5f82d1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:0a45aa607424ce690b417a6a1811989b024310bf51237f9ab2266dc8bcb50394"
+  name = "github.com/sapcc/go-pagerduty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "d477b6ab2e077f804a2cde121866062a599223b9"
+
+[[projects]]
   digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
   name = "github.com/spf13/pflag"
   packages = ["."]
@@ -246,7 +245,6 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/PagerDuty/go-pagerduty",
     "github.com/dustin/go-humanize",
     "github.com/go-kit/kit/log",
     "github.com/go-kit/kit/log/level",
@@ -255,12 +253,12 @@
     "github.com/nlopes/slack/slackevents",
     "github.com/pkg/errors",
     "github.com/prometheus/alertmanager/client",
-    "github.com/prometheus/alertmanager/store",
     "github.com/prometheus/alertmanager/types",
     "github.com/prometheus/client_golang/api",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
     "github.com/prometheus/common/model",
+    "github.com/sapcc/go-pagerduty",
     "github.com/spf13/pflag",
     "github.com/stretchr/testify/assert",
     "github.com/stretchr/testify/require",

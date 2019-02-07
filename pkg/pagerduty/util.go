@@ -22,7 +22,7 @@ package pagerduty
 import (
 	"strings"
 
-	"github.com/PagerDuty/go-pagerduty"
+	"github.com/sapcc/go-pagerduty"
 )
 
 func acknowledgementsToString(acknowledgements []pagerduty.Acknowledgement) string {

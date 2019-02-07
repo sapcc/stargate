@@ -3,7 +3,7 @@ package pagerduty
 import (
 	"testing"
 
-	"github.com/PagerDuty/go-pagerduty"
+	"github.com/sapcc/go-pagerduty"
 	"github.com/stretchr/testify/assert"
 )
 
