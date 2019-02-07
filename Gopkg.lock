@@ -61,20 +61,12 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:c79fb010be38a59d657c48c6ba1d003a8aa651fa56b579d959d74573b7dff8e1"
-  name = "github.com/gorilla/context"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "08b5f424b9271eedf6f9f0ce86cb9396ed337a42"
-  version = "v1.1.1"
-
-[[projects]]
-  digest = "1:e73f5b0152105f18bc131fba127d9949305c8693f8a762588a82a48f61756f5f"
+  digest = "1:ca59b1175189b3f0e9f1793d2c350114be36eaabbe5b9f554b35edee1de50aea"
   name = "github.com/gorilla/mux"
   packages = ["."]
   pruneopts = "UT"
-  revision = "e3702bed27f0d39777b0b37b664b6280e8ef8fbf"
-  version = "v1.6.2"
+  revision = "a7962380ca08b5a188038c69871b8d3fbdf31e89"
+  version = "v1.7.0"
 
 [[projects]]
   digest = "1:7b5c6e2eeaa9ae5907c391a91c132abfd5c9e8a784a341b5625e750c67e6825d"
@@ -137,7 +129,7 @@
   version = "v1.0.0"
 
 [[projects]]
-  digest = "1:6bf73fb3fc50ccf78af3a479af9568d4b708bced1f30ae2c633dc0f7e62d4837"
+  digest = "1:66b8df0b545a4df159056edb2b319088180db531401d4746bcc641592d9ac456"
   name = "github.com/prometheus/alertmanager"
   packages = [
     "client",
@@ -145,8 +137,8 @@
     "types",
   ]
   pruneopts = "UT"
-  revision = "cb1f78cc7882bc977096d1b81789488e0136120d"
-  version = "v0.16.0-alpha.0"
+  revision = "571caec278be1f0dbadfdf5effd0bbea16562cfc"
+  version = "v0.16.1"
 
 [[projects]]
   digest = "1:0bc959110ba43da7c144dbe4016a1afe7ffa177aebfdddc896aa8fb8a73698fe"
@@ -167,11 +159,11 @@
   name = "github.com/prometheus/client_model"
   packages = ["go"]
   pruneopts = "UT"
-  revision = "f287a105a20ec685d797f65cd0ce8fbeaef42da1"
+  revision = "fd36f4220a901265f90734c3183c5f0c91daa0b8"
 
 [[projects]]
   branch = "master"
-  digest = "1:1bb3a633ab048ee4c05c76266494d3639c27b236c329900869dfcbda462cbcf7"
+  digest = "1:5db40429ed16901fba141066eb2cfb1974651f7749faf2d523230f0c776f481d"
   name = "github.com/prometheus/common"
   packages = [
     "config",
@@ -180,11 +172,11 @@
     "model",
   ]
   pruneopts = "UT"
-  revision = "2998b132700a7d019ff618c06a234b47c1f3f681"
+  revision = "cfeb6f9992ffa54aaa4f2170ade4067ee478b250"
 
 [[projects]]
   branch = "master"
-  digest = "1:08eb8b60450efe841e37512d66ce366a87d187505d7c67b99307a6c1803483a2"
+  digest = "1:5833c61ebbd625a6bad8e5a1ada2b3e13710cf3272046953a2c8915340fe60a3"
   name = "github.com/prometheus/procfs"
   packages = [
     ".",
@@ -193,15 +185,15 @@
     "xfs",
   ]
   pruneopts = "UT"
-  revision = "b1a0a9a36d7453ba0f62578b99712f3a6c5f82d1"
+  revision = "488faf799f863e27e50c516468f76ae8f1da20a5"
 
 [[projects]]
   branch = "master"
-  digest = "1:0a45aa607424ce690b417a6a1811989b024310bf51237f9ab2266dc8bcb50394"
+  digest = "1:842e3d049f1c6a9bd272bdb8eb3fafbcf5a01e96a47e463a787ef4e512258b11"
   name = "github.com/sapcc/go-pagerduty"
   packages = ["."]
   pruneopts = "UT"
-  revision = "d477b6ab2e077f804a2cde121866062a599223b9"
+  revision = "4c3871e13acc88abe88451f33fe9f2d348761c63"
 
 [[projects]]
   digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
@@ -231,7 +223,7 @@
     "trace",
   ]
   pruneopts = "UT"
-  revision = "915654e7eabcea33ae277abbecf52f0d8b7a9fdc"
+  revision = "65e2d4e15006aab9813ff8769e768bbf4bb667a0"
 
 [[projects]]
   digest = "1:4d2e5a73dc1500038e504a8d78b986630e3626dc027bc030ba5c75da257cdb96"
