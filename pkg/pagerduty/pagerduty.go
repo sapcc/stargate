@@ -116,6 +116,7 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 
 	ackedIncident := acknowledgeIncident(incident, user)
 	p.logger.LogDebug("acknowledge incident",
+		"incidentID", ackedIncident.ID,
 		"assignments", assignmentsToString(ackedIncident.Assignments),
 		"acknowledgements", acknowledgementsToString(ackedIncident.Acknowledgements),
 		"status", ackedIncident.Status,
