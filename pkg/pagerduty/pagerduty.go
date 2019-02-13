@@ -116,7 +116,7 @@ func (p *Client) AcknowledgeIncident(alert *client.ExtendedAlert, userEmail stri
 
 	ackedIncident := acknowledgeIncident(incident, user)
 	p.logger.LogDebug("acknowledge incident",
-		"incidentID", ackedIncident.ID,
+		"incidentID", ackedIncident.Id,
 		"assignments", assignmentsToString(ackedIncident.Assignments),
 		"acknowledgements", acknowledgementsToString(ackedIncident.Acknowledgements),
 		"status", ackedIncident.Status,
@@ -230,8 +230,14 @@ func (p *Client) listIncidents() ([]pagerduty.Incident, error) {
 }
 
 func (p *Client) addActualAcknowledgerAsNoteToIncident(incident *pagerduty.Incident, actualAcknowledger string) error {
+	noteContent := fmt.Sprintf("Incident was acknowledged on behalf of %s. time: %s", actualAcknowledger, time.Now().UTC().String())
+	p.logger.LogDebug(
+		"adding note to incident",
+		"incidentID", incident.Id,
+		"content", noteContent,
+	)
 	note := pagerduty.IncidentNote{
-		Content: fmt.Sprintf("Incident was acknowledged on behalf of %s. time: %s", actualAcknowledger, time.Now().UTC().String()),
+		Content: noteContent,
 		User: pagerduty.APIObject{
 			ID:      p.defaultUser.ID,
 			Type:    TypeUserReference,
@@ -240,7 +246,7 @@ func (p *Client) addActualAcknowledgerAsNoteToIncident(incident *pagerduty.Incid
 			Summary: p.defaultUser.Summary,
 		},
 	}
-	return p.pagerdutyClient.CreateIncidentNote(incident.APIObject.ID, p.defaultUser.Email, note)
+	return p.pagerdutyClient.CreateIncidentNote(incident.Id, p.defaultUser.Email, note)
 }
 
 func acknowledgeIncident(incident *pagerduty.Incident, user *pagerduty.User) pagerduty.Incident {
