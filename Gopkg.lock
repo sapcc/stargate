@@ -189,11 +189,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:842e3d049f1c6a9bd272bdb8eb3fafbcf5a01e96a47e463a787ef4e512258b11"
+  digest = "1:71e0b6cfc4e44c9b0392e4ab112775ff2aa258bafb6a0cbdaf9e88a9ab3e9814"
   name = "github.com/sapcc/go-pagerduty"
   packages = ["."]
   pruneopts = "UT"
-  revision = "4c3871e13acc88abe88451f33fe9f2d348761c63"
+  revision = "304f7ea6b5b6d37787f9fa87bfaa6f4a417c4346"
 
 [[projects]]
   digest = "1:c1b1102241e7f645bc8e0c22ae352e8f0dc6484b6cb4d132fa9f24174e0119e2"
