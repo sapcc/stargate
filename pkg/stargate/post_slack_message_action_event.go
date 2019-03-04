@@ -20,30 +20,16 @@
 package stargate
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/prometheus/alertmanager/client"
 	"github.com/sapcc/stargate/pkg/alert"
 	"github.com/sapcc/stargate/pkg/alertmanager"
-	"github.com/sapcc/stargate/pkg/api"
 	"github.com/sapcc/stargate/pkg/metrics"
 	"github.com/sapcc/stargate/pkg/slack"
-	"github.com/sapcc/stargate/pkg/store"
 	"github.com/sapcc/stargate/pkg/util"
 )
-
-// HandleSlackCommand handles slack commands
-func (s *Stargate) HandleSlackCommand(w http.ResponseWriter, r *http.Request) {
-	s.logger.LogDebug("received slack command")
-	w.WriteHeader(http.StatusNoContent)
-	r.ParseForm()
-
-	go s.slack.HandleSlackCommand(r)
-}
 
 // HandleSlackMessageActionEvent handles slack message action events
 func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.Request) {
@@ -207,166 +193,4 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 			}
 		}
 	}()
-}
-
-// HandleListAlerts handles alert listing.
-func (s *Stargate) HandleListAlerts(w http.ResponseWriter, r *http.Request) {
-	// get a fresh list of alerts from the alertmanager
-	filter := alertmanager.NewFilterFromRequest(r)
-	alertList, err := s.alertmanagerClient.ListAlerts(filter)
-	if err != nil {
-		s.logger.LogError("error listing alerts", err)
-	}
-
-	// if an alert is found in the internal alert store by its fingerprint,
-	// its annotations will be replaced with the ones from the alert store.
-	for idx, extendedAlert := range alertList {
-		a, err := s.alertStore.GetFromFingerPrintString(extendedAlert.Fingerprint)
-		if err != nil {
-			if !store.IsErrNotFound(err) {
-				s.logger.LogError("error getting alert from store", err, "alertFingerPrint", extendedAlert.Fingerprint)
-			}
-			continue
-		}
-		alertList[idx].Annotations = alert.MergeAnnotations(a, extendedAlert)
-	}
-
-	s.respondWithJSON(w, alertList)
-	s.logger.LogDebug("responding to request", "handler", "listAlerts")
-}
-
-// HandleListSilences handles silence listing.
-func (s *Stargate) HandleListSilences(w http.ResponseWriter, r *http.Request) {
-	f := alertmanager.NewFilterFromRequest(r)
-	silenceList, err := s.alertmanagerClient.ListSilences(f)
-	if err != nil {
-		s.logger.LogError("error getting list of silences", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error getting list of silences"})
-		return
-	}
-
-	s.respondWithJSON(w, silenceList)
-	s.logger.LogDebug("responding to request", "handler", "listAlerts")
-}
-
-// HandleGetStatus handles the status.
-func (s *Stargate) HandleGetStatus(w http.ResponseWriter, r *http.Request) {
-	s.respondWithJSON(w, map[string]string{"status": "ready"})
-}
-
-// HandleGetSilenceByID handles getting the silence by ID.
-func (s *Stargate) HandleGetSilenceByID(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	silenceID, ok := vars["silenceID"]
-	if !ok {
-		s.logger.LogDebug("not silence ID found in path")
-		w.WriteHeader(http.StatusNotFound)
-		return
-	}
-
-	silence, err := s.alertmanagerClient.GetSilenceByID(silenceID)
-	if err != nil {
-		s.logger.LogError("error getting silence by id", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error getting silence by id"})
-		return
-	}
-
-	s.respondWithJSON(w, silence)
-	s.logger.LogDebug("responding to request", "handler", "getSilenceByID")
-}
-
-// HandleInternalListAlertsFromStore handles listing alerts from the internal store.
-func (s *Stargate) HandleInternalListAlertsFromStore(w http.ResponseWriter, r *http.Request) {
-	alertList := s.alertStore.List()
-	s.respondWithJSON(w, alertList)
-	s.logger.LogDebug("responding to request", "handler", "internalListAlertsFromStore")
-}
-
-// HandleInternalListAlertsFromAlertmanager handles listing the alerts from the alertmanager.
-func (s *Stargate) HandleInternalListAlertsFromAlertmanager(w http.ResponseWriter, r *http.Request) {
-	alertList, err := s.alertmanagerClient.ListAlerts(alertmanager.NewDefaultFilter())
-	if err != nil {
-		s.logger.LogError("error listing alerts from alertmanager", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error listing alerts from alertmanager"})
-		return
-	}
-	s.respondWithJSON(w, alertList)
-	s.logger.LogDebug("responding to request", "handler", "internalListAlertsFromAlertmanager")
-}
-
-// HandleInternalListPagerdutyIncident handles listing the pagerduty incidents.
-func (s *Stargate) HandleInternalListPagerdutyIncident(w http.ResponseWriter, r *http.Request) {
-	incidentList, err := s.pagerdutyClient.ListParsedIncidents()
-	if err != nil {
-		s.logger.LogError("error listing incidents from pagerduty", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error listing incidents from pagerduty"})
-		return
-	}
-
-	s.respondWithJSON(w, incidentList)
-	s.logger.LogDebug("responding to request", "handler", "internalListAlertsFromAlertmanager")
-}
-
-// HandleInternalAcknowledgeAlert handles acknowledging an alert.
-func (s *Stargate) HandleInternalAcknowledgeAlert(w http.ResponseWriter, r *http.Request) {
-	var d struct {
-		Data struct {
-			Alertname      string `json:"alertname"`
-			Region         string `json:"region"`
-			AcknowledgedBy string `json:"acknowledgedBy"`
-		} `json:"data"`
-	}
-
-	err := json.NewDecoder(r.Body).Decode(&d)
-	if err != nil {
-		s.logger.LogError("error decoding data", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error decoding data"})
-		return
-	}
-
-	alertList := []*client.ExtendedAlert{{
-		Alert: client.Alert{
-			Labels: client.LabelSet{
-				client.LabelName("alertname"): client.LabelValue(d.Data.Alertname),
-				client.LabelName("region"):    client.LabelValue(d.Data.Region),
-			},
-		},
-	}}
-
-	err = s.alertStore.AcknowledgeAndSetMultiple(alertList, d.Data.AcknowledgedBy)
-	if err != nil {
-		s.logger.LogError("error acknowledging alert", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error acknowledging alert"})
-		return
-	}
-
-	s.respondWithJSON(w, nil)
-	s.logger.LogDebug("responding to request", "handler", "internalAcknowledgeAlert")
-}
-
-func (s *Stargate) respondWithJSON(w http.ResponseWriter, data interface{}) {
-	w.WriteHeader(http.StatusOK)
-	w.Header().Set("Content-Type", "application/json")
-
-	var d struct {
-		Data   interface{} `json:"data,omitempty"`
-		Status string      `json:"status,omitempty"`
-	}
-	if data != nil {
-		d.Data = data
-	} else {
-		d.Status = "success"
-	}
-
-	err := json.NewEncoder(w).Encode(d)
-	if err != nil || data == nil {
-		s.logger.LogError("error encoding data", err)
-		json.NewEncoder(w).Encode(api.Error{Code: http.StatusInternalServerError, Message: "error encoding data"})
-	}
 }

@@ -21,9 +21,10 @@ package alertmanager
 
 import (
 	"fmt"
-	"github.com/prometheus/alertmanager/client"
 	"net/http"
 	"strings"
+
+	"github.com/prometheus/alertmanager/client"
 )
 
 // Filter is used to filter alerts.
@@ -87,9 +88,15 @@ func NewFilterFromRequest(r *http.Request) *Filter {
 
 // WithAdditionalFilter adds an additional filter
 func (f *Filter) WithAdditionalFilter(addFilter map[string]string) {
+	filterList := make([]string, 0)
 	for k, v := range addFilter {
-		f.AddFilter += fmt.Sprintf("%s=%s", k, v)
+		filterList = append(filterList, fmt.Sprintf("%s=\"%s\"", k, v))
 	}
+	// add trailing "," if not already if necessary.
+	if f.AddFilter != "" && !strings.HasSuffix(f.AddFilter, ",") {
+		f.AddFilter += ","
+	}
+	f.AddFilter += strings.Join(filterList, ",")
 }
 
 // WithAlertLabelsFilter adds a filter based on alert labels
