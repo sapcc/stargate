@@ -226,7 +226,7 @@ func (a *AlertStore) Snapshot() error {
 }
 
 // garbageCollect cleans the AlertStore.
-// Alerts which are not present in the Alertmanager, or Alerts which expired will be removed.
+// Alerts which are no longer present in the Alertmanager, or Alerts which expired will be removed.
 func (a *AlertStore) garbageCollect() error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
@@ -255,13 +255,17 @@ func (a *AlertStore) garbageCollect() error {
 			delete(a.s, fp)
 			a.logger.LogDebug("alert can no longer be found in alertmanager. deleting from store", "fingerprint", fp.String(), "alertname", string(al.Labels["alertname"]))
 			continue
-		} else if al.EndsAt.UTC().After(time.Now().UTC()) {
+		}
+		// Update the EndsAt of the alert in the AlertStore with the one found in the Alertmanager.
+		a.s[fp].EndsAt = currentAlertMap[fp].EndsAt
+
+		// Check whether the alert is expired.
+		if al.EndsAt.UTC().After(time.Now().UTC()) {
 			delete(a.s, fp)
 			a.logger.LogDebug("alert is expired. deleting alert from store", "fingerprint", fp.String(), "alertname", string(al.Labels["alertname"]))
 			continue
 		}
-		// Update the EndsAt of the alert in the AlertStore with the one found in the Alertmanager.
-		a.s[fp].EndsAt = currentAlertMap[fp].EndsAt
+
 	}
 	return nil
 }
