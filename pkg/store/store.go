@@ -231,6 +231,8 @@ func (a *AlertStore) garbageCollect() error {
 	a.mtx.Lock()
 	defer a.mtx.Unlock()
 
+	a.logger.LogDebug("running garabage collection")
+
 	filter := alertmanager.NewDefaultFilter()
 	filter.IsSilenced = true
 	currentAlertList, err := a.alertmanagerClient.ListAlerts(filter)
@@ -251,11 +253,19 @@ func (a *AlertStore) garbageCollect() error {
 
 	for fp := range a.s {
 		al, ok := currentAlertMap[fp]
+		// Remove alert from store if alert is resolved.
 		if !ok {
 			delete(a.s, fp)
 			a.logger.LogDebug("alert can no longer be found in alertmanager. deleting from store", "fingerprint", fp.String(), "alertname", string(al.Labels["alertname"]))
 			continue
 		}
+		//  Remove alert if it was triggered again as indicated by different StartsAt.
+		if a.s[fp].StartsAt != al.StartsAt {
+			delete(a.s, fp)
+			a.logger.LogDebug("alert was triggered again. deleting old one from store", "fingerprint", fp.String(), "alertname", string(al.Labels["alertname"]))
+			continue
+		}
+
 		// Update the EndsAt of the alert in the AlertStore with the one found in the Alertmanager.
 		a.s[fp].EndsAt = al.EndsAt
 	}
