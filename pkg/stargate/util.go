@@ -31,11 +31,11 @@ func (s *Stargate) respondWithJSON(w http.ResponseWriter, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 
 	var d struct {
-		Data   interface{} `json:"data,omitempty"`
-		Status string      `json:"status,omitempty"`
+		Data   *interface{} `json:"data,omitempty"`
+		Status string       `json:"status,omitempty"`
 	}
 	if data != nil {
-		d.Data = data
+		d.Data = &data
 	} else {
 		d.Status = "success"
 	}
