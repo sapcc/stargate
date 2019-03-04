@@ -32,12 +32,13 @@ func (s *Stargate) respondWithJSON(w http.ResponseWriter, data interface{}) {
 
 	var d struct {
 		Data   *interface{} `json:"data,omitempty"`
-		Status string       `json:"status,omitempty"`
+		Status *string      `json:"status,omitempty"`
 	}
 	if data != nil {
 		d.Data = &data
 	} else {
-		d.Status = "success"
+		statusSuccess := "success"
+		d.Status = &statusSuccess
 	}
 
 	enc := json.NewEncoder(w)
