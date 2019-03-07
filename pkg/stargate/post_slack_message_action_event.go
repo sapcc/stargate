@@ -143,7 +143,7 @@ func (s *Stargate) HandleSlackMessageActionEvent(w http.ResponseWriter, r *http.
 
 				s.slack.PostMessage(
 					slackMessageAction.Channel.Id,
-					fmt.Sprintf("<@%s> silenced alert %s for %v. <%s|See Silence>", slackMessageAction.User.Id, alertname, durationDays, s.alertmanagerClient.LinkToSilence(silenceID)),
+					fmt.Sprintf("<@%s> silenced alert %s for %v day(s). <%s|See Silence>", slackMessageAction.User.Id, alertname, durationDays, s.alertmanagerClient.LinkToSilence(silenceID)),
 					slackMessageAction.OriginalMessage.Timestamp,
 				)
 				s.slack.AddReactionToMessage(slackMessageAction.Channel.Id, slackMessageAction.OriginalMessage.Timestamp, slack.SilenceSuccessReactionEmoji)
