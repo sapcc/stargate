@@ -36,6 +36,9 @@ const (
 	// AcknowledgedByLabel ...
 	AcknowledgedByLabel = "acknowledgedBy"
 
+	// AcknowledgedAtLabel ...
+	AcknowledgedAtLabel = "acknowledgedAt"
+
 	// RegionLabel ...
 	RegionLabel = "region"
 

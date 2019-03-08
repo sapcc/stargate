@@ -56,13 +56,17 @@ func AcknowledgeAlert(alert *client.ExtendedAlert, acknowledgedBy string) *clien
 		return clone
 	}
 
-	// alert already acked by this person.
-	if strings.Contains(string(ack), acknowledgedBy) {
-		return clone
+	// Alert not acknowledged by this person. Add them to the list.
+	if !strings.Contains(string(ack), acknowledgedBy) {
+		acknowledgedBy = fmt.Sprintf("%s, %s", ack, acknowledgedBy)
+		clone.Annotations[alertmanager.AcknowledgedByLabel] = client.LabelValue(acknowledgedBy)
 	}
 
-	acknowledgedBy = fmt.Sprintf("%s, %s", ack, acknowledgedBy)
-	clone.Annotations[alertmanager.AcknowledgedByLabel] = client.LabelValue(acknowledgedBy)
+	// Only considers the first acknowledgement.
+	_, ok = clone.Annotations[alertmanager.AcknowledgedAtLabel]
+	if !ok {
+		clone.Annotations[alertmanager.AcknowledgedAtLabel] = client.LabelValue(time.Now().UTC().Format(time.RFC3339Nano))
+	}
 	return clone
 }
 

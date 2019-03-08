@@ -20,13 +20,14 @@
 package alert
 
 import (
+	"testing"
+	"time"
+
 	"github.com/prometheus/alertmanager/client"
 	"github.com/prometheus/common/model"
 	"github.com/sapcc/stargate/pkg/alertmanager"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestAcknowledgeAlert(t *testing.T) {
@@ -40,6 +41,9 @@ func TestAcknowledgeAlert(t *testing.T) {
 		ackedBy, ok := alert.Annotations[alertmanager.AcknowledgedByLabel]
 		assert.True(t, ok, "the acknowledgedBy annotation should not be empty")
 		assert.Equal(t, string(ackedBy), "Peter, Hans Glueck", "the the acknowledgedBy annotation should be equal")
+
+		_, ok = alert.Annotations[alertmanager.AcknowledgedAtLabel]
+		assert.True(t, ok, "the acknowledgedAt annotation should not be empty")
 	}
 }
 
