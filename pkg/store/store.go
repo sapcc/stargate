@@ -255,14 +255,14 @@ func (a *AlertStore) garbageCollect() error {
 		al, ok := currentAlertMap[fp]
 		// Remove alert from store if alert is resolved.
 		if !ok {
+			a.logger.LogDebug("alert can no longer be found in alertmanager. deleting from store", "fingerprint", fp.String(), "alertname", string(a.s[fp].Labels["alertname"]))
 			delete(a.s, fp)
-			a.logger.LogDebug("alert can no longer be found in alertmanager. deleting from store", "fingerprint", fp.String(), "alertname", string(al.Labels["alertname"]))
 			continue
 		}
 		//  Remove alert if it was triggered again as indicated by different StartsAt.
 		if a.s[fp].StartsAt != al.StartsAt {
-			delete(a.s, fp)
 			a.logger.LogDebug("alert was triggered again. deleting old one from store", "fingerprint", fp.String(), "alertname", string(al.Labels["alertname"]))
+			delete(a.s, fp)
 			continue
 		}
 
